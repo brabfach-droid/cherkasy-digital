@@ -1,3 +1,5 @@
+import { useCity } from "../hooks/City";
+import { HeroLive } from "../components/CityLive";
 import { Accordion } from "../components/UI";
 import { QR } from "../components/V2";
 import { siteUrl } from "../services/client";
@@ -297,13 +299,14 @@ export function Home() {
     .sort((a: any, b: any) => a.sort_order - b.sort_order);
   return (
     <>
-      <div className="hero">
+      <div className="hero live-hero">
         <div className="hero-copy">
           <p className="eyebrow">
             <span className="live-dot" /> Місто у вашому браузері
           </p>
           <h1>{settings.hero_title}</h1>
           <p>{settings.hero_description}</p>
+          <HeroLive />
           <form
             className="hero-search"
             onSubmit={(e) => {
@@ -867,23 +870,16 @@ export function Detail() {
   );
 }
 export function CityNow({ compact = false }: { compact?: boolean }) {
-  const q = useData(async () => {
-    const [cache, manual] = await Promise.all([
-      list("api_cache", { eq: { key: "alerts" }, size: 1 }),
-      list("city_status", { size: 20 }),
-    ]);
-    return { cache: cache.rows[0], manual: manual.rows };
-  });
-  useEffect(() => {
-    const t = setInterval(q.reload, 30000);
-    return () => clearInterval(t);
-  }, []);
-  const c = q.data?.cache,
+  const feed = useCity();
+  const q = {
+    data: { cache: feed.cache, manual: feed.city },
+    loading: feed.loading,
+    error: feed.errors.city,
+  };
+  const c = feed.cache,
     p = c?.payload,
-    stale =
-      !c?.refreshed_at ||
-      Date.now() - new Date(c.refreshed_at).getTime() > 120000;
-  const state = stale ? "unknown" : p?.state || "unknown";
+    state = feed.air,
+    stale = state === "unknown";
   const alertLabel =
     state === "active"
       ? "Повітряна тривога"
@@ -891,7 +887,7 @@ export function CityNow({ compact = false }: { compact?: boolean }) {
         ? "Активну тривогу не зафіксовано"
         : "Дані тривоги недоступні";
   const content = (
-    <State loading={q.loading} error={q.error}>
+    <State loading={q.loading} error="">
       <div className={"status-grid " + (compact ? "compact" : "")}>
         <div
           className={
@@ -915,6 +911,9 @@ export function CityNow({ compact = false }: { compact?: boolean }) {
               ? datetime(c.refreshed_at)
               : "Ще не синхронізовано"}
           </small>
+          {feed.errors.alerts && (
+            <p>Не вдалося перевірити дані джерела. Поточний стан невідомий.</p>
+          )}
           {stale && c?.refreshed_at && (
             <p>Попередні дані застаріли. Поточний стан невідомий.</p>
           )}
@@ -933,7 +932,10 @@ export function CityNow({ compact = false }: { compact?: boolean }) {
               </small>
             </div>
           ))}
-        {!q.data?.manual.length && (
+        {q.error && (
+          <p role="alert">Міські повідомлення тимчасово недоступні.</p>
+        )}
+        {!q.error && !q.data?.manual.length && (
           <div className="status-card info">
             <Activity size={24} />
             <h3>Оперативні повідомлення</h3>

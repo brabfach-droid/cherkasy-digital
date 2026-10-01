@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCity } from "../hooks/City";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
@@ -23,7 +24,7 @@ import { configured, siteUrl } from "../services/client";
 import { datetime, statuses, type Row } from "../config/types";
 import { Button, Empty, Modal, Pagination, State, useToast } from "./UI";
 import { motionTokens, reveal } from "../config/motion";
-export const APP_VERSION = "2.0.0";
+export const APP_VERSION = "2.1.0";
 export function activeAnnouncements(rows: Row[]) {
   const now = Date.now();
   return rows
@@ -40,23 +41,17 @@ export function activeAnnouncements(rows: Row[]) {
     );
 }
 export function useCityFeed() {
-  const q = useData(async () => {
-    const [announcements, city] = await Promise.all([
-      list("announcements", { size: 100, order: "priority" }),
-      list("city_status", { size: 100, eq: { is_active: true } }),
-    ]);
-    return {
-      announcements: activeAnnouncements(announcements.rows),
-      city: city.rows.filter(
-        (r) => !r.ended_at || Date.parse(r.ended_at) > Date.now(),
-      ),
-    };
-  });
-  useEffect(() => {
-    const t = setInterval(q.reload, 30000);
-    return () => clearInterval(t);
-  }, []);
-  return q;
+  const c = useCity();
+  const data = useMemo(
+    () => ({ announcements: c.announcements, city: c.city }),
+    [c.announcements, c.city],
+  );
+  return {
+    data,
+    loading: c.loading,
+    error: c.errors.city || c.errors.announcements,
+    reload: c.reload,
+  };
 }
 const icons: Record<string, typeof Info> = {
   info: Info,
@@ -173,37 +168,7 @@ export function GlobalAnnouncement() {
     </>
   );
 }
-export function CityStatus() {
-  const q = useCityFeed();
-  const important = q.data?.announcements.find((r) => r.placement === "global"),
-    urgent = important && ["critical", "danger"].includes(important.type);
-  const city =
-    q.data?.city.find((r) => ["danger", "critical"].includes(r.severity)) ||
-    q.data?.city[0];
-  const label = q.error
-    ? "Статус недоступний"
-    : !q.data
-      ? "Оновлюємо статус"
-      : urgent
-        ? "Термінова інформація"
-        : important || city
-          ? "Є важливі повідомлення"
-          : configured
-            ? "Черкаси · штатний режим"
-            : "Черкаси · демоперегляд";
-  return (
-    <Link
-      to="/now"
-      className={
-        "city-indicator " +
-        (urgent ? "danger" : important || city ? "warning" : "normal")
-      }
-    >
-      <Activity size={14} />
-      <span key={label}>{label}</span>
-    </Link>
-  );
-}
+export { CityStatus } from "./CityLive";
 export function PageOutlet() {
   const l = useLocation();
   const reduced = useReducedMotion();

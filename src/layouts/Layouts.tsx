@@ -1,3 +1,4 @@
+import { AirAlertStatus, CityStrip } from "../components/CityLive";
 import {
   APP_VERSION,
   CityStatus,
@@ -66,6 +67,7 @@ export function PublicLayout() {
           </Link>
           <CityStatus />
         </div>
+        <AirAlertStatus />
         <nav
           className={open ? "main-nav open" : "main-nav"}
           aria-label="Головне меню"
@@ -150,6 +152,7 @@ export function PublicLayout() {
       {settings.maintenance_notice && (
         <div className="alert">{settings.maintenance_notice}</div>
       )}
+      <CityStrip />
       <main id="main">
         <Outlet />
       </main>

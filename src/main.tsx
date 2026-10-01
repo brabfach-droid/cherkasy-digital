@@ -1,3 +1,4 @@
+import { CityProvider } from "./hooks/City";
 import { MotionConfig } from "motion/react";
 import { PageOutlet } from "./components/V2";
 import { lazy, Suspense, useEffect } from "react";
@@ -13,6 +14,7 @@ import {
   accountLinks,
 } from "./layouts/Layouts";
 import "./styles/global.css";
+import "./styles/display.css";
 const Display = lazy(() =>
   import("./pages/V2Pages").then((m) => ({ default: m.Display })),
 );
@@ -323,7 +325,9 @@ createRoot(document.getElementById("root")!).render(
       <ToastProvider>
         <AuthProvider>
           <SettingsProvider>
-            <App />
+            <CityProvider>
+              <App />
+            </CityProvider>
           </SettingsProvider>
         </AuthProvider>
       </ToastProvider>

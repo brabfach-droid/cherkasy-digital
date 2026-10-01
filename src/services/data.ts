@@ -5,6 +5,8 @@ export type Query = {
   search?: string;
   searchColumns?: string[];
   eq?: Record<string, any>;
+  gte?: Record<string, string>;
+  lte?: Record<string, string>;
   page?: number;
   size?: number;
   order?: string;
@@ -31,6 +33,10 @@ export async function list(table: string, q: Query = {}) {
       rows = rows.filter((r) => v.every((i) => r[k]?.includes(i)));
     for (const [k, v] of Object.entries(q.eq || {}))
       rows = rows.filter((r) => r[k] === v);
+    for (const [k, v] of Object.entries(q.gte || {}))
+      rows = rows.filter((r) => r[k] && String(r[k]) >= v);
+    for (const [k, v] of Object.entries(q.lte || {}))
+      rows = rows.filter((r) => r[k] && String(r[k]) <= v);
     if (q.search)
       rows = rows.filter((r) =>
         (q.searchColumns || ["title", "name", "question"]).some((k) =>
@@ -59,6 +65,8 @@ export async function list(table: string, q: Query = {}) {
   for (const [k, v] of Object.entries(q.contains || {})) b = b.contains(k, v);
   for (const [k, v] of Object.entries(q.eq || {}))
     b = v === null ? b.is(k, null) : b.eq(k, v);
+  for (const [k, v] of Object.entries(q.gte || {})) b = b.gte(k, v);
+  for (const [k, v] of Object.entries(q.lte || {})) b = b.lte(k, v);
   if (q.search) {
     const term = q.search.replace(/[,%()\\]/g, " ").slice(0, 100);
     b = b.or(
