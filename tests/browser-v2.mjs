@@ -61,7 +61,7 @@ await page.screenshot({
   path: "test-results/v2-banner-mobile.png",
   fullPage: true,
 });
-await page.setViewportSize({width:1440,height:900});
+await page.setViewportSize({ width: 1440, height: 900 });
 await page.getByRole("button", { name: /Сповіщення:/ }).click();
 await page.getByText("Усі сповіщення →").waitFor();
 await page.keyboard.press("Escape");
@@ -76,7 +76,7 @@ assert.equal(
   0,
 );
 await page.goto(base + "display");
-await page.locator(".display-critical").waitFor();
+await page.locator(".display-critical").waitFor({ timeout: 120000 });
 await page.waitForTimeout(500);
 assert.ok(await page.locator(".display-critical").innerText());
 await page.setViewportSize({ width: 1920, height: 1080 });

@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 const endpoint = "https://live-fixture.supabase.co",
   server = await createServer({
+    cacheDir: "/tmp/cherkasy-vite-live",
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(endpoint),
       "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(
@@ -24,6 +25,8 @@ const browser = await chromium.launch({
   page = await browser.newPage({ viewport: { width: 1440, height: 1000 } }),
   errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
+await page.route("https://fonts.googleapis.com/**", (r) => r.abort());
+await page.route("https://fonts.gstatic.com/**", (r) => r.abort());
 const seed = JSON.parse(fs.readFileSync("public/demo.json", "utf8"));
 let state = "active",
   age = 0,
@@ -123,58 +126,73 @@ for (const width of [1440, 1024, 768, 375, 320]) {
       fullPage: false,
     });
 }
+// Signage continues ordinary content during active alert.
+for (const [width, height] of [
+  [1366, 768],
+  [1920, 1080],
+  [2560, 1440],
+  [3840, 2160],
+]) {
+  await page.setViewportSize({ width, height });
+  await page.goto(base + "display");
+  await page.locator(".display-air.active").waitFor();
+  await page.locator(".broadcast-overlay.alert").waitFor();
+  await page
+    .locator(".broadcast-overlay")
+    .waitFor({ state: "detached", timeout: 12000 });
+  assert.equal(await page.locator(".broadcast-overlay").count(), 0);
+  const initial = await page
+    .locator(".broadcast-rail>span")
+    .first()
+    .innerText();
+  await page.waitForTimeout(5500);
+  const after = await page.locator(".broadcast-rail>span").first().innerText();
+  assert.notEqual(after, initial, "rotation stopped during alert");
+  assert.ok(await page.locator(".display-air.active").isVisible());
+  assert.ok(await page.locator(".broadcast-ticker").isVisible());
+  assert.match(
+    await page.locator(".broadcast-ticker").innerText(),
+    /ПОВІТРЯНА ТРИВОГА/,
+  );
+  await page.screenshot({
+    path: `test-results/broadcast-${width}.png`,
+    fullPage: true,
+  });
+
+  assert.ok(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <= innerWidth + 1 &&
+        document.documentElement.scrollHeight <= innerHeight + 1,
+    ),
+    "display viewport overflow",
+  );
+  await page.screenshot({ path: `test-results/broadcast-${width}.png` });
+}
 await page.setViewportSize({ width: 1920, height: 1080 });
-await page.goto(base + "display");
-await page.locator(".live-display.alert").waitFor();
-await page.waitForTimeout(400);
-assert.match(await page.locator(".display-scene h1").innerText(), /ПОВІТРЯНА/);
-await page.screenshot({
-  path: "test-results/live-display-alert.png",
-  fullPage: true,
-});
-assert.ok(
-  (await page.locator(".display-live-modules").innerText()).includes(
-    "8 хв тому",
-  ),
-);
-// Error must show unknown, not an all-clear scene.
+// All-clear only follows a confirmed active -> inactive response.
 apiFailed = true;
 await page.evaluate(() => window.dispatchEvent(new Event("online")));
-await page.locator(".live-display.warning").waitFor();
-assert.equal(await page.locator(".live-display.all-clear").count(), 0);
-assert.match(await page.locator(".display-air").innerText(), /невідомий/);
+await page.locator(".display-air.unknown").waitFor();
+assert.equal(await page.locator(".broadcast-overlay.clear").count(), 0);
 apiFailed = false;
 state = "inactive";
 await page.evaluate(() => window.dispatchEvent(new Event("online")));
-await page.locator(".live-display.all-clear").waitFor();
-await page.waitForTimeout(8500);
-await page.locator(".live-display.warning").waitFor();
-assert.equal(await page.locator(".live-display.alert").count(), 0);
+await page.locator(".broadcast-overlay.clear").waitFor();
+await page
+  .locator(".broadcast-overlay")
+  .waitFor({ state: "detached", timeout: 10000 });
+assert.equal(await page.locator(".broadcast-overlay").count(), 0);
 age = 180000;
 await page.evaluate(() => window.dispatchEvent(new Event("online")));
 await page.locator(".display-air.unknown").waitFor();
-assert.equal(await page.locator(".live-display.all-clear").count(), 0);
+assert.equal(await page.locator(".broadcast-overlay.clear").count(), 0);
 age = 0;
 critical = true;
 await page.evaluate(() => window.dispatchEvent(new Event("online")));
-await page.locator(".live-display.critical").waitFor();
-await page.waitForTimeout(350);
-await page.screenshot({
-  path: "test-results/live-display-critical.png",
-  fullPage: true,
-});
-critical = false;
-await page.evaluate(() => window.dispatchEvent(new Event("online")));
-await page.locator(".live-display.warning").waitFor();
-await page.waitForTimeout(6000);
-assert.match(
-  await page.locator(".display-scene h1").innerText(),
-  /Останні новини|Місто реагує/,
-);
-await page.screenshot({
-  path: "test-results/live-display-normal.png",
-  fullPage: true,
-});
+await page.locator(".broadcast.critical").waitFor();
+await page.locator(".display-critical").waitFor({ timeout: 25000 });
+await page.screenshot({ path: "test-results/broadcast-critical.png" });
 await page.emulateMedia({ reducedMotion: "reduce" });
 assert.equal(
   await page
@@ -183,14 +201,19 @@ assert.equal(
     .evaluate((e) => getComputedStyle(e).animationName),
   "none",
 );
-// At most one source request per refresh despite multiple widgets.
+// Cursor returns after movement and hides after inactivity.
+await page.mouse.move(50, 50);
+await page.waitForTimeout(3800);
+assert.ok(await page.locator(".broadcast.cursor-hidden").count());
+await page.mouse.move(60, 60);
+assert.equal(await page.locator(".broadcast.cursor-hidden").count(), 0);
 const before = requests;
 await page.evaluate(() => window.dispatchEvent(new Event("online")));
 await page.waitForTimeout(600);
 assert.equal(requests - before, 1);
 assert.deepEqual(errors, []);
 console.log(
-  "PASS LIVE: header five sizes, simultaneous announcement + alert, details, alert priority, unknown/stale, confirmed all-clear 8s, critical, rotation, real freshness, reduced motion, shared source polling",
+  "PASS BROADCAST: global header, four TV resolutions, alert overlay 7s, active-alert content rotation/ticker, all-clear 5s, unknown/stale, critical scene, cursor, reduced motion, shared polling",
 );
 await browser.close();
 await server.close();

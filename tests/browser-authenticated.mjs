@@ -6,6 +6,7 @@ import fs from "node:fs";
 import assert from "node:assert/strict";
 const url = "https://ui-fixture.supabase.co";
 const server = await createServer({
+  cacheDir: "/tmp/cherkasy-vite-auth",
   define: {
     "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(url),
     "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(
@@ -221,6 +222,7 @@ for (const width of process.env.UI_QUICK ? [] : [1440, 375]) {
     "admin/events",
     "admin/forms",
     "admin/settings",
+    "admin/display",
     "admin/users",
     "admin/audit",
     "admin/appeals",
@@ -272,6 +274,36 @@ await page.getByRole("button", { name: "Надіслати заяву" }).click(
 await page.waitForURL(
   "**/account/applications/cccccccc-cccc-4ccc-8ccc-cccccccccccc",
 );
+await page.setViewportSize({ width: 1440, height: 1000 });
+await page.goto(base + "admin/display");
+await page.getByLabel("Назва екрана").fill("ЧЕРКАСИ ТАБЛО");
+await page.getByLabel("Кількість новин").fill("7");
+await page.getByLabel("Тривалість: Новини").fill("12");
+await page.getByRole("button", { name: "Відкрити preview display" }).click();
+const preview = page.frameLocator('iframe[title="Preview display 16:9"]');
+await preview.locator(".broadcast-brand strong").waitFor();
+assert.equal(
+  await preview.locator(".broadcast-brand strong").innerText(),
+  "ЧЕРКАСИ ТАБЛО",
+);
+assert.equal(
+  await preview
+    .locator(".broadcast")
+    .evaluate((e) => e.getBoundingClientRect().width),
+  1920,
+);
+await page.getByRole("button", { name: "Зберегти табло", exact: true }).click();
+await page.getByText("Налаштування табло збережено", { exact: true }).waitFor();
+const display = seed.site_settings.find((r) => r.key === "display").value;
+assert.equal(display.title, "ЧЕРКАСИ ТАБЛО");
+assert.equal(display.news_count, 7);
+assert.equal(display.durations.news, 12);
+await page.locator(".display-preview-frame").scrollIntoViewIfNeeded();
+await page.waitForTimeout(1000);
+await page.screenshot({
+  path: "test-results/display-admin-preview.png",
+  fullPage: true,
+});
 assert.deepEqual(errors, []);
 console.log(
   "PASS: authenticated resident/staff/admin UI fixtures, CMS preview/save, form builder, multistep draft/submit, mobile layout, zero page errors",

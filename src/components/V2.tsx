@@ -24,7 +24,7 @@ import { configured, siteUrl } from "../services/client";
 import { datetime, statuses, type Row } from "../config/types";
 import { Button, Empty, Modal, Pagination, State, useToast } from "./UI";
 import { motionTokens, reveal } from "../config/motion";
-export const APP_VERSION = "2.1.0";
+export const APP_VERSION = "2.2.0";
 export function activeAnnouncements(rows: Row[]) {
   const now = Date.now();
   return rows

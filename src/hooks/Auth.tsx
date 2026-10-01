@@ -49,15 +49,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     let active = true;
     let generation = 0;
+    let resolvedUser: string | null | undefined;
     const c = supabase;
     async function sync(s: Session | null) {
       const g = ++generation;
       if (!active) return;
       setSession(s);
-      setLoading(true);
+      if (resolvedUser === undefined || resolvedUser !== (s?.user.id || null))
+        setLoading(true);
       if (!s) {
         setProfile(null);
         setRoles([]);
+        resolvedUser = null;
         setLoading(false);
         return;
       }
@@ -69,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (active && g === generation) {
           setProfile((p.rows[0] as Profile) || null);
           setRoles(r.rows.map((x) => x.role_name));
+          resolvedUser = s.user.id;
         }
       } catch {
         if (active && g === generation) {

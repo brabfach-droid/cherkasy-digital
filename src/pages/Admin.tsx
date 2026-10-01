@@ -1,3 +1,4 @@
+import { DisplaySettings } from "../components/DisplaySettings";
 import { RevisionHistory } from "./V2Pages";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -1403,23 +1404,10 @@ export function Settings() {
           }
         />
         <h2>Режим великого екрана</h2>
-        <JsonField
-          label="Налаштування /display: title, blocks (city, announcements, events, news, services), interval (5–120 секунд), theme (dark/light), qr_url, fullscreen_friendly"
-          value={
-            values.display || {
-              title: "Черкаси Цифрові",
-              blocks: ["city", "announcements", "events", "news", "services"],
-              interval: 15,
-              theme: "dark",
-              qr_url: "",
-              fullscreen_friendly: true,
-            }
-          }
+        <DisplaySettings
+          value={values.display || {}}
           onChange={(display) => setValues((v) => ({ ...v, display }))}
         />
-        <Link to="/display" target="_blank">
-          Відкрити великий екран
-        </Link>
         <h2>Блоки головної сторінки</h2>
         {(values.homepage_blocks || []).map((b: any, i: number) => (
           <div key={b.key} className="row">
@@ -1623,6 +1611,58 @@ export function Files() {
           <input readOnly value={url} onFocus={(e) => e.target.select()} />
         </label>
       )}
+    </>
+  );
+}
+
+export function DisplayAdmin() {
+  const auth = useAuth(),
+    { settings, reload } = useSettings(),
+    toast = useToast(),
+    [value, setValue] = useState(settings.display || {}),
+    [busy, setBusy] = useState(false),
+    [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    if (!dirty) setValue(settings.display || {});
+  }, [JSON.stringify(settings.display), dirty]);
+  if (!auth.roles.some((r) => ["admin", "super_admin"].includes(r)))
+    return <Empty text="Доступ обмежено" />;
+  return (
+    <>
+      <h1>Міське інформаційне табло</h1>
+      <form
+        className="panel"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          try {
+            const existing = await list("site_settings", {
+              eq: { key: "display" },
+              size: 1,
+            });
+            await save("site_settings", {
+              ...(existing.rows[0] ? { id: existing.rows[0].id } : {}),
+              key: "display",
+              value,
+            });
+            reload();
+            toast("Налаштування табло збережено");
+          } catch (err) {
+            toast(errorText(err), "error");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <DisplaySettings
+          value={value}
+          onChange={(v) => {
+            setDirty(true);
+            setValue(v);
+          }}
+        />
+        <Button busy={busy}>Зберегти табло</Button>
+      </form>
     </>
   );
 }

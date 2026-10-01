@@ -1,5 +1,6 @@
 import { createServer } from "vite";
 const devServer = await createServer({
+  cacheDir: "/tmp/cherkasy-vite-public",
   server: { host: "127.0.0.1", port: 5174, strictPort: true },
   logLevel: "error",
 });
@@ -45,7 +46,17 @@ for (const width of [1440, 1024, 768, 375, 320]) {
     "display",
   ]) {
     await page.goto(base + route, { waitUntil: "domcontentloaded" });
-    try{await page.waitForSelector("main h1",{timeout:10000});}catch(e){console.error({width,route,errors,body:await page.locator("body").innerText()});throw e;}
+    try {
+      await page.waitForSelector("main h1", { timeout: 10000 });
+    } catch (e) {
+      console.error({
+        width,
+        route,
+        errors,
+        body: await page.locator("body").innerText(),
+      });
+      throw e;
+    }
     await page.waitForTimeout(200);
     assert.ok(
       await page.locator("main h1").innerText(),

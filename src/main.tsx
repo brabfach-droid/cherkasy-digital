@@ -64,6 +64,9 @@ const Apply = lazy(() =>
 const Dashboard = lazy(() =>
     import("./pages/Admin").then((m) => ({ default: m.Dashboard })),
   ),
+  DisplayAdmin = lazy(() =>
+    import("./pages/Admin").then((m) => ({ default: m.DisplayAdmin })),
+  ),
   Crud = lazy(() => import("./pages/Admin").then((m) => ({ default: m.Crud }))),
   Builder = lazy(() =>
     import("./pages/Admin").then((m) => ({ default: m.FormBuilder })),
@@ -151,6 +154,7 @@ function App() {
           ["departments", "Департаменти"],
           ["faqs", "FAQ"],
           ["settings", "Налаштування"],
+          ["display", "Інформаційне табло"],
           ["audit", "Журнал аудиту"],
           ["deletions", "Видалення акаунтів"],
         ]
@@ -284,6 +288,7 @@ function App() {
                   <Route path="forms" element={<Builder />} />
                   <Route path="users" element={<Users />} />
                   <Route path="settings" element={<Settings />} />
+                  <Route path="display" element={<DisplayAdmin />} />
                   <Route path="audit" element={<Audit />} />
                   <Route path="files" element={<Files />} />
                   <Route path="applications" element={<ListApplications />} />
