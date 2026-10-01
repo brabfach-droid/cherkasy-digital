@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="uk">
+  <meta charset="utf-8" /><title>Перехід до порталу</title>
+  <script>
+    const p = location.pathname.split("/").filter(Boolean);
+    const base = p.length > 1 ? "/" + p[0] + "/" : "/";
+    sessionStorage.setItem(
+      "spa_redirect",
+      location.pathname.slice(base.length - 1) + location.search,
+    );
+    location.replace(base + location.hash);
+  </script>
+  <p>Переходимо до порталу…</p>
+</html>

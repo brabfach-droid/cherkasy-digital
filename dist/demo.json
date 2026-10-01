@@ -1,0 +1,733 @@
+{
+  "roles": [
+    {
+      "name": "super_admin",
+      "label": "Головний адміністратор",
+      "id": "6801dea8-85f0-5119-b6c0-8687bdf6071e"
+    },
+    {
+      "name": "admin",
+      "label": "Адміністратор",
+      "id": "b12fbf20-dc0f-53eb-bc90-2415267f98ce"
+    },
+    {
+      "name": "department_admin",
+      "label": "Керівник департаменту",
+      "id": "36af912b-cfdd-52e4-928f-c9a0d5a52d91"
+    },
+    {
+      "name": "operator",
+      "label": "Оператор заяв",
+      "id": "289c0baf-fe29-530a-8207-b0e7e7d1441f"
+    },
+    {
+      "name": "editor",
+      "label": "Редактор",
+      "id": "07de426c-f974-576c-8ac6-ebc7af246b0d"
+    },
+    {
+      "name": "appeals_operator",
+      "label": "Оператор звернень",
+      "id": "1c42319a-49a0-5265-8a0f-5f04eb80c83e"
+    },
+    {
+      "name": "viewer",
+      "label": "Перегляд",
+      "id": "4c1fe602-9c3e-5590-a986-9832af76b754"
+    }
+  ],
+  "departments": [
+    {
+      "name": "Демонстраційний департамент",
+      "slug": "demo-department",
+      "description": "ДЕМО. Замініть на реальний орган перед запуском.",
+      "id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d"
+    }
+  ],
+  "service_categories": [
+    {
+      "id": "3f12c4a2-385c-5f00-9a30-948edcb63d4e",
+      "name": "Освіта",
+      "slug": "education",
+      "description": "Послуги та інформація для мешканців",
+      "sort_order": 0
+    },
+    {
+      "id": "2e01d3a3-7188-5b90-a36a-d50054293d0a",
+      "name": "Житло та ЖКГ",
+      "slug": "housing",
+      "description": "Послуги та інформація для мешканців",
+      "sort_order": 1
+    },
+    {
+      "id": "f10053db-78a4-592b-9f7e-5ffe8ca211f4",
+      "name": "Соціальна підтримка",
+      "slug": "social",
+      "description": "Послуги та інформація для мешканців",
+      "sort_order": 2
+    },
+    {
+      "id": "f301408f-6dc6-58cd-a23c-dc81fa030d31",
+      "name": "Транспорт",
+      "slug": "transport",
+      "description": "Послуги та інформація для мешканців",
+      "sort_order": 3
+    },
+    {
+      "id": "0840bb4d-e997-504f-929d-952e20df62cc",
+      "name": "Документи",
+      "slug": "documents",
+      "description": "Послуги та інформація для мешканців",
+      "sort_order": 4
+    },
+    {
+      "id": "062e862e-d937-51f2-9297-177d6e0c6f33",
+      "name": "Бізнес",
+      "slug": "business",
+      "description": "Послуги та інформація для мешканців",
+      "sort_order": 5
+    },
+    {
+      "id": "39c20512-9ed3-561b-85f7-e3ae50a8e8f1",
+      "name": "Благоустрій",
+      "slug": "improvement",
+      "description": "Послуги та інформація для мешканців",
+      "sort_order": 6
+    },
+    {
+      "id": "ec1e4339-56dc-5b7a-adca-6e94c7785323",
+      "name": "Культура",
+      "slug": "culture",
+      "description": "Послуги та інформація для мешканців",
+      "sort_order": 7
+    },
+    {
+      "id": "72f953c4-0740-59de-a8a9-b3c853f3c2a0",
+      "name": "Спорт",
+      "slug": "sport",
+      "description": "Послуги та інформація для мешканців",
+      "sort_order": 8
+    },
+    {
+      "id": "cc6d952c-f121-5b94-8954-a16ef7b5f499",
+      "name": "Сім’я та діти",
+      "slug": "family",
+      "description": "Послуги та інформація для мешканців",
+      "sort_order": 9
+    }
+  ],
+  "appeal_categories": [
+    {
+      "name": "Дороги",
+      "slug": "roads",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "id": "5d589fb3-63da-5017-993e-194c35b0d474"
+    },
+    {
+      "name": "Освітлення",
+      "slug": "light",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "id": "d4c9d0b1-e738-5437-9eaf-492438d3ee95"
+    },
+    {
+      "name": "Сміття",
+      "slug": "waste",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "id": "513a1e4b-752d-5fd9-acda-46f10c19cf25"
+    },
+    {
+      "name": "Вода",
+      "slug": "water",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "id": "e591c992-3dc6-5dad-8f80-372537c57170"
+    },
+    {
+      "name": "Транспорт",
+      "slug": "transport",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "id": "984f8d07-f041-5a3e-b2e7-463095ebc024"
+    },
+    {
+      "name": "Дерева",
+      "slug": "trees",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "id": "a178afb8-99fb-5ff9-a9aa-b966c7766b87"
+    },
+    {
+      "name": "Благоустрій",
+      "slug": "improvement",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "id": "fcc791ad-1735-5a19-9080-8077f80d17aa"
+    },
+    {
+      "name": "Інше",
+      "slug": "other",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "id": "c827d9d4-e8a2-523d-bb73-59566601348e"
+    }
+  ],
+  "news_categories": [
+    {
+      "name": "Портал",
+      "slug": "portal",
+      "id": "89e2cac5-4229-5ab9-873c-2bdf3c92183d"
+    }
+  ],
+  "document_categories": [
+    {
+      "name": "Інше",
+      "slug": "other",
+      "id": "1b04a611-7019-58fe-825d-6f75fbdf3edd"
+    },
+    {
+      "name": "Рішення",
+      "slug": "decisions",
+      "id": "8e823bc6-3edb-56c0-ad89-d9a74c53f2ef"
+    },
+    {
+      "name": "Розпорядження",
+      "slug": "orders",
+      "id": "ac25960d-3bf1-525e-8e01-e5377accdcda"
+    },
+    {
+      "name": "Накази",
+      "slug": "instructions",
+      "id": "6469719b-3e56-53cc-82a6-f433b8631ca7"
+    },
+    {
+      "name": "Протоколи",
+      "slug": "protocols",
+      "id": "76dc7bc2-8ec6-5dec-88be-16b4f1cf7c19"
+    },
+    {
+      "name": "Програми",
+      "slug": "programs",
+      "id": "0de83a55-ac5a-5d7d-a445-5f8ed6510cd3"
+    },
+    {
+      "name": "Звіти",
+      "slug": "reports",
+      "id": "b59f875c-49f5-5a97-9f63-426ed2bf2618"
+    }
+  ],
+  "services": [
+    {
+      "title": "Демо: запит консультації",
+      "slug": "demo-consultation",
+      "category_id": "0840bb4d-e997-504f-929d-952e20df62cc",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "summary": "Залиште запит і перевірте, як працює електронна заява.",
+      "content": "**Демонстраційна послуга.** Подана заява не є офіційним зверненням до органу влади.",
+      "format": "online",
+      "status": "published",
+      "published_at": "2026-01-01T00:00:00Z",
+      "featured": true,
+      "is_demo": true,
+      "available": true,
+      "audience": ["residents"],
+      "duration": "Демонстраційний термін",
+      "cost": "Безкоштовно",
+      "eligibility": "Зареєстровані користувачі порталу",
+      "requirements": "За потреби додайте тестовий PDF без персональних даних.",
+      "steps": "1. Увійдіть\n2. Заповніть форму\n3. Перевірте й надішліть",
+      "result": "Тестове повідомлення у кабінеті",
+      "legal_basis": "Не встановлено. ДЕМО.",
+      "contacts": "Контакти не налаштовані",
+      "id": "54df2fbd-959f-50f7-b9ac-819ba7fe5a13"
+    },
+    {
+      "title": "Демо: звернення щодо благоустрою",
+      "slug": "demo-improvement",
+      "category_id": "39c20512-9ed3-561b-85f7-e3ae50a8e8f1",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "summary": "Опишіть питання щодо громадського простору.",
+      "content": "**Демонстраційна послуга.** Подана заява не є офіційним зверненням до органу влади.",
+      "format": "online",
+      "status": "published",
+      "published_at": "2026-01-01T00:00:00Z",
+      "featured": true,
+      "is_demo": true,
+      "available": true,
+      "audience": ["residents"],
+      "duration": "Демонстраційний термін",
+      "cost": "Безкоштовно",
+      "eligibility": "Зареєстровані користувачі порталу",
+      "requirements": "За потреби додайте тестовий PDF без персональних даних.",
+      "steps": "1. Увійдіть\n2. Заповніть форму\n3. Перевірте й надішліть",
+      "result": "Тестове повідомлення у кабінеті",
+      "legal_basis": "Не встановлено. ДЕМО.",
+      "contacts": "Контакти не налаштовані",
+      "id": "5024afda-123d-5e15-860e-fe90357d055f"
+    },
+    {
+      "title": "Демо: інформація для родин",
+      "slug": "demo-family",
+      "category_id": "cc6d952c-f121-5b94-8954-a16ef7b5f499",
+      "department_id": "fe2acb2d-f6c8-5f8f-be60-c6c7ef12ca6d",
+      "summary": "Тестова послуга для перевірки форм і вкладень.",
+      "content": "**Демонстраційна послуга.** Подана заява не є офіційним зверненням до органу влади.",
+      "format": "online",
+      "status": "published",
+      "published_at": "2026-01-01T00:00:00Z",
+      "featured": true,
+      "is_demo": true,
+      "available": true,
+      "audience": ["residents"],
+      "duration": "Демонстраційний термін",
+      "cost": "Безкоштовно",
+      "eligibility": "Зареєстровані користувачі порталу",
+      "requirements": "За потреби додайте тестовий PDF без персональних даних.",
+      "steps": "1. Увійдіть\n2. Заповніть форму\n3. Перевірте й надішліть",
+      "result": "Тестове повідомлення у кабінеті",
+      "legal_basis": "Не встановлено. ДЕМО.",
+      "contacts": "Контакти не налаштовані",
+      "id": "3f00d16e-8047-54b3-806f-c7b2d443f57e"
+    }
+  ],
+  "service_forms": [
+    {
+      "service_id": "54df2fbd-959f-50f7-b9ac-819ba7fe5a13",
+      "title": "Електронна заява",
+      "id": "f02a2eb4-ca31-5d6d-ab7d-547c25030a0e"
+    },
+    {
+      "service_id": "5024afda-123d-5e15-860e-fe90357d055f",
+      "title": "Електронна заява",
+      "id": "add76e93-3c7d-5f41-ac2a-5caa94c03a8d"
+    },
+    {
+      "service_id": "3f00d16e-8047-54b3-806f-c7b2d443f57e",
+      "title": "Електронна заява",
+      "id": "3101f9b5-fa82-5946-9cf1-e8258f3b16cc"
+    }
+  ],
+  "service_form_fields": [
+    {
+      "form_id": "f02a2eb4-ca31-5d6d-ab7d-547c25030a0e",
+      "key": "name",
+      "type": "text",
+      "label": "Ваше ім’я",
+      "required": true,
+      "options": [],
+      "validation": {},
+      "sort_order": 0,
+      "id": "dbaf2ae6-e19d-5755-b346-75892a42f4fa"
+    },
+    {
+      "form_id": "f02a2eb4-ca31-5d6d-ab7d-547c25030a0e",
+      "key": "email",
+      "type": "email",
+      "label": "Email для зв’язку",
+      "required": true,
+      "options": [],
+      "validation": {},
+      "sort_order": 1,
+      "id": "64c933cc-517d-5e65-9018-ce806fe5482c"
+    },
+    {
+      "form_id": "f02a2eb4-ca31-5d6d-ab7d-547c25030a0e",
+      "key": "subject",
+      "type": "select",
+      "label": "Тема запиту",
+      "required": true,
+      "options": ["Консультація", "Інше"],
+      "validation": {},
+      "sort_order": 2,
+      "id": "2a90c528-00d3-54a8-8b55-c85ae4ac4bf3"
+    },
+    {
+      "form_id": "f02a2eb4-ca31-5d6d-ab7d-547c25030a0e",
+      "key": "description",
+      "type": "textarea",
+      "label": "Опишіть питання",
+      "required": true,
+      "options": [],
+      "validation": {
+        "minLength": 10,
+        "maxLength": 5000
+      },
+      "sort_order": 3,
+      "id": "93f1b55b-42d0-5dee-a750-a41b29c33f08"
+    },
+    {
+      "form_id": "f02a2eb4-ca31-5d6d-ab7d-547c25030a0e",
+      "key": "attachment",
+      "type": "pdf",
+      "label": "Тестовий PDF",
+      "required": false,
+      "options": [],
+      "validation": {},
+      "sort_order": 4,
+      "id": "f4bc8f21-b0fc-5aa4-bd3e-a67ef2709cd1"
+    },
+    {
+      "form_id": "f02a2eb4-ca31-5d6d-ab7d-547c25030a0e",
+      "key": "consent",
+      "type": "confirmation",
+      "label": "Підтверджую, що це демонстраційна заява",
+      "required": true,
+      "options": [],
+      "validation": {},
+      "sort_order": 5,
+      "id": "5efa637c-300c-51f5-b11c-a6833fb6dd37"
+    },
+    {
+      "form_id": "add76e93-3c7d-5f41-ac2a-5caa94c03a8d",
+      "key": "name",
+      "type": "text",
+      "label": "Ваше ім’я",
+      "required": true,
+      "options": [],
+      "validation": {},
+      "sort_order": 0,
+      "id": "508ae6bf-4c51-5605-acd8-013de4d575bb"
+    },
+    {
+      "form_id": "add76e93-3c7d-5f41-ac2a-5caa94c03a8d",
+      "key": "email",
+      "type": "email",
+      "label": "Email для зв’язку",
+      "required": true,
+      "options": [],
+      "validation": {},
+      "sort_order": 1,
+      "id": "63d322e4-3c77-57b7-94b9-560de1265fa1"
+    },
+    {
+      "form_id": "add76e93-3c7d-5f41-ac2a-5caa94c03a8d",
+      "key": "subject",
+      "type": "select",
+      "label": "Тема запиту",
+      "required": true,
+      "options": ["Консультація", "Інше"],
+      "validation": {},
+      "sort_order": 2,
+      "id": "517d4f62-f014-54be-92ce-f94d77447c08"
+    },
+    {
+      "form_id": "add76e93-3c7d-5f41-ac2a-5caa94c03a8d",
+      "key": "description",
+      "type": "textarea",
+      "label": "Опишіть питання",
+      "required": true,
+      "options": [],
+      "validation": {
+        "minLength": 10,
+        "maxLength": 5000
+      },
+      "sort_order": 3,
+      "id": "ada87e9a-8580-553c-8d1f-dc3065a3d637"
+    },
+    {
+      "form_id": "add76e93-3c7d-5f41-ac2a-5caa94c03a8d",
+      "key": "attachment",
+      "type": "pdf",
+      "label": "Тестовий PDF",
+      "required": false,
+      "options": [],
+      "validation": {},
+      "sort_order": 4,
+      "id": "48a1dc83-c264-5844-b339-10f009ed6dbe"
+    },
+    {
+      "form_id": "add76e93-3c7d-5f41-ac2a-5caa94c03a8d",
+      "key": "consent",
+      "type": "confirmation",
+      "label": "Підтверджую, що це демонстраційна заява",
+      "required": true,
+      "options": [],
+      "validation": {},
+      "sort_order": 5,
+      "id": "ada53598-48d9-5516-82c7-343809c64cb1"
+    },
+    {
+      "form_id": "3101f9b5-fa82-5946-9cf1-e8258f3b16cc",
+      "key": "name",
+      "type": "text",
+      "label": "Ваше ім’я",
+      "required": true,
+      "options": [],
+      "validation": {},
+      "sort_order": 0,
+      "id": "21a385f5-7c0e-5548-adb6-df44ba8c0df1"
+    },
+    {
+      "form_id": "3101f9b5-fa82-5946-9cf1-e8258f3b16cc",
+      "key": "email",
+      "type": "email",
+      "label": "Email для зв’язку",
+      "required": true,
+      "options": [],
+      "validation": {},
+      "sort_order": 1,
+      "id": "0ff15f27-354a-5efe-96a5-cc5bf9e7bf6f"
+    },
+    {
+      "form_id": "3101f9b5-fa82-5946-9cf1-e8258f3b16cc",
+      "key": "subject",
+      "type": "select",
+      "label": "Тема запиту",
+      "required": true,
+      "options": ["Консультація", "Інше"],
+      "validation": {},
+      "sort_order": 2,
+      "id": "65fb4faa-5c83-5853-a62d-f76f841308d1"
+    },
+    {
+      "form_id": "3101f9b5-fa82-5946-9cf1-e8258f3b16cc",
+      "key": "description",
+      "type": "textarea",
+      "label": "Опишіть питання",
+      "required": true,
+      "options": [],
+      "validation": {
+        "minLength": 10,
+        "maxLength": 5000
+      },
+      "sort_order": 3,
+      "id": "d13e7361-1c9c-5105-bbfb-a6a58ec8dc37"
+    },
+    {
+      "form_id": "3101f9b5-fa82-5946-9cf1-e8258f3b16cc",
+      "key": "attachment",
+      "type": "pdf",
+      "label": "Тестовий PDF",
+      "required": false,
+      "options": [],
+      "validation": {},
+      "sort_order": 4,
+      "id": "3965c56c-370f-5d9f-8ce9-f5d0dd3a7f7c"
+    },
+    {
+      "form_id": "3101f9b5-fa82-5946-9cf1-e8258f3b16cc",
+      "key": "consent",
+      "type": "confirmation",
+      "label": "Підтверджую, що це демонстраційна заява",
+      "required": true,
+      "options": [],
+      "validation": {},
+      "sort_order": 5,
+      "id": "69f47035-7795-5a94-b538-37a4def8f0e0"
+    }
+  ],
+  "news": [
+    {
+      "title": "Демо: ваші міські сервіси в одному місці",
+      "slug": "demo-portal",
+      "summary": "Огляд можливостей порталу для мешканців.",
+      "content": "## Демонстраційна публікація\nЦей матеріал показує роботу редактора. **Він не є міською новиною.**",
+      "category_id": "89e2cac5-4229-5ab9-873c-2bdf3c92183d",
+      "status": "published",
+      "published_at": "2026-09-01T09:00:00Z",
+      "featured": true,
+      "is_demo": true,
+      "author": "Демо-редакція",
+      "id": "870df716-2f3d-57c1-adb7-3e94173c75f5"
+    },
+    {
+      "title": "Демо: як подати першу заяву",
+      "slug": "demo-application",
+      "summary": "Від заповнення форми до відповіді у кабінеті.",
+      "content": "## Демонстраційна публікація\nЦей матеріал показує роботу редактора. **Він не є міською новиною.**",
+      "category_id": "89e2cac5-4229-5ab9-873c-2bdf3c92183d",
+      "status": "published",
+      "published_at": "2026-09-01T09:00:00Z",
+      "featured": false,
+      "is_demo": true,
+      "author": "Демо-редакція",
+      "id": "6c227896-be09-5f25-9be2-40bace217161"
+    },
+    {
+      "title": "Демо: новий простір для взаємодії",
+      "slug": "demo-community",
+      "summary": "Знайомство з сервісом звернень.",
+      "content": "## Демонстраційна публікація\nЦей матеріал показує роботу редактора. **Він не є міською новиною.**",
+      "category_id": "89e2cac5-4229-5ab9-873c-2bdf3c92183d",
+      "status": "published",
+      "published_at": "2026-09-01T09:00:00Z",
+      "featured": false,
+      "is_demo": true,
+      "author": "Демо-редакція",
+      "id": "edb73877-bcbe-5478-a7cb-3af287c63643"
+    }
+  ],
+  "documents": [
+    {
+      "title": "Демо: інформаційний документ порталу",
+      "slug": "demo-guide",
+      "document_number": "ДЕМО",
+      "date": "2026-09-01",
+      "category_id": "1b04a611-7019-58fe-825d-6f75fbdf3edd",
+      "description": "Демонстраційний документ. Адміністратор має завантажити PDF.",
+      "status": "published",
+      "published_at": "2026-01-01T00:00:00Z",
+      "is_demo": true,
+      "id": "ba1fb2de-67c1-5465-999a-e0212eefdc17"
+    }
+  ],
+  "events": [
+    {
+      "title": "Демо: знайомство з міськими сервісами",
+      "slug": "demo-event",
+      "summary": "Тестова подія в календарі.",
+      "content": "ДЕМО. Захід не є реальною міською подією.",
+      "starts_at": "2026-10-20T12:00:00Z",
+      "location": "Місце не налаштовано",
+      "organizer": "Не налаштовано",
+      "category": "Зустріч",
+      "status": "published",
+      "published_at": "2026-01-01T00:00:00Z",
+      "is_demo": true,
+      "id": "c5b46005-7d12-574b-a567-d91dbee39591"
+    }
+  ],
+  "faqs": [
+    {
+      "question": "Як подати заяву?",
+      "answer": "Увійдіть, виберіть послугу, заповніть форму, перевірте дані та підтвердьте надсилання.",
+      "category": "Портал",
+      "published": true,
+      "is_demo": true,
+      "id": "1b5da824-4e53-58c6-b0ff-28e490c551e8"
+    },
+    {
+      "question": "Де побачити відповідь?",
+      "answer": "У кабінеті відкрийте «Мої заяви» й виберіть потрібну заяву.",
+      "category": "Портал",
+      "published": true,
+      "is_demo": true,
+      "id": "18894006-52ee-5286-af3a-a94c7503e0bb"
+    },
+    {
+      "question": "Чи є це офіційним порталом?",
+      "answer": "Поточний проєкт — демонстраційна платформа. Офіційні органи й правові тексти налаштовує власник.",
+      "category": "Портал",
+      "published": true,
+      "is_demo": true,
+      "id": "9caf37ea-29a8-5191-bc8b-b13101aae1e8"
+    }
+  ],
+  "site_settings": [
+    {
+      "key": "name",
+      "value": "Черкаси Цифрові",
+      "id": "28b470e1-83b2-585c-a285-c796d1fcdfc8"
+    },
+    {
+      "key": "short_name",
+      "value": "Цифрові",
+      "id": "992793b9-8c2f-567d-8573-b967f6ddff06"
+    },
+    {
+      "key": "description",
+      "value": "Міські послуги, документи та сервіси в одному місці",
+      "id": "42872711-3970-5255-81d7-b6e10be04e96"
+    },
+    {
+      "key": "hero_title",
+      "value": "Черкаси — місто онлайн",
+      "id": "08bd320f-9705-566c-8aa0-ffe919474b73"
+    },
+    {
+      "key": "hero_description",
+      "value": "Менше черг. Більше часу для життя. Усе важливе для вашого міста — поруч.",
+      "id": "64a06144-40dc-5dac-a8dd-d93caa0806e1"
+    },
+    {
+      "key": "primary_color",
+      "value": "#087F72",
+      "id": "b511fe66-56a5-5994-8f7d-c4fc86344d31"
+    },
+    {
+      "key": "accent_color",
+      "value": "#13B8A6",
+      "id": "c1bae008-7fc2-5616-b935-1fdbb4473c7c"
+    },
+    {
+      "key": "contact_email",
+      "value": "",
+      "id": "9c5e3f42-8f55-55d3-bd99-0e8b57480a94"
+    },
+    {
+      "key": "footer_text",
+      "value": "Демонстраційний міський портал. Не є офіційним ресурсом міської ради.",
+      "id": "b51b88d4-4b2a-513c-a874-72f9d62e0178"
+    },
+    {
+      "key": "social_links",
+      "value": [],
+      "id": "d3aa602c-928d-5be4-9b81-96d8785e4205"
+    },
+    {
+      "key": "logo_path",
+      "value": "",
+      "id": "729d909f-fe1f-5b7a-9488-25be7393822c"
+    },
+    {
+      "key": "favicon_path",
+      "value": "",
+      "id": "31f32619-e109-5ee1-9760-af85534dab7c"
+    },
+    {
+      "key": "maintenance_notice",
+      "value": "",
+      "id": "ac1abd84-e641-503c-b9e3-aba154051251"
+    },
+    {
+      "key": "privacy_text",
+      "value": "Правовий текст не налаштовано. Перед прийманням реальних персональних даних власник має опублікувати затверджену політику.",
+      "id": "ee29f719-8e97-510b-9bb1-2a35e09e3698"
+    },
+    {
+      "key": "terms_text",
+      "value": "Умови використання не налаштовано.",
+      "id": "8b8c5ece-993d-53f5-bee0-22dfaf76e262"
+    },
+    {
+      "key": "homepage_blocks",
+      "value": [
+        {
+          "key": "popular",
+          "enabled": true,
+          "sort_order": 0
+        },
+        {
+          "key": "categories",
+          "enabled": true,
+          "sort_order": 1
+        },
+        {
+          "key": "now",
+          "enabled": true,
+          "sort_order": 2
+        },
+        {
+          "key": "announcements",
+          "enabled": true,
+          "sort_order": 3
+        },
+        {
+          "key": "news",
+          "enabled": true,
+          "sort_order": 4
+        },
+        {
+          "key": "events",
+          "enabled": true,
+          "sort_order": 5
+        },
+        {
+          "key": "documents",
+          "enabled": true,
+          "sort_order": 6
+        },
+        {
+          "key": "help",
+          "enabled": true,
+          "sort_order": 7
+        }
+      ],
+      "id": "5145bc30-eeea-55ad-aba6-c5c1b218fb93"
+    }
+  ]
+}

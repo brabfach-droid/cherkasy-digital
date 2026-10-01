@@ -1,0 +1,3 @@
+[functions.alerts]
+verify_jwt = false
+# Request authorization is checked using the server-only x-sync-secret header.
