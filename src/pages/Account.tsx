@@ -3,7 +3,14 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../hooks/Auth";
 import { useData } from "../hooks/useData";
-import { list, save, remove, rpc, errorText } from "../services/data";
+import {
+  list,
+  save,
+  updateRow,
+  remove,
+  rpc,
+  errorText,
+} from "../services/data";
 import { requireClient, siteUrl } from "../services/client";
 import { deleteObject } from "../services/files";
 import {
@@ -249,7 +256,7 @@ function AccountContent() {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
               void run(async () => {
-                await save("profiles", {
+                await updateRow("profiles", {
                   id: auth.profile!.id,
                   first_name: f.get("first_name"),
                   last_name: f.get("last_name"),
@@ -271,7 +278,7 @@ function AccountContent() {
               prefix={auth.session!.user.id}
               kind="image"
               onUploaded={async (path) => {
-                await save("profiles", {
+                await updateRow("profiles", {
                   id: auth.profile!.id,
                   avatar_path: path,
                 });

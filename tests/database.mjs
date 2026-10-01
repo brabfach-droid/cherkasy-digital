@@ -457,4 +457,111 @@ await as("resident", async () => {
 console.log(
   "PASS V2: server future-date rejection and hidden required field rules",
 );
+// Regression: partial UPSERT fails required fields before conflict handling; PATCH-style UPDATE succeeds.
+for (const table of ["news", "events", "documents", "services"]) {
+  await as("admin", async () => {
+    const row = (
+      await db.query(
+        `insert into ${table}(title,slug,status) values('Lifecycle regression',$1,'published') returning id`,
+        ["lifecycle-" + table],
+      )
+    ).rows[0];
+    await assert.rejects(
+      db.query(
+        `insert into ${table}(id,status) values($1,'archived') on conflict(id) do update set status=excluded.status`,
+        [row.id],
+      ),
+      (e) => e.code === "23502",
+    );
+    assert.equal(
+      (
+        await db.query(
+          `update ${table} set status='archived' where id=$1 returning id`,
+          [row.id],
+        )
+      ).rows.length,
+      1,
+    );
+    assert.equal(
+      (
+        await db.query(
+          `update ${table} set deleted_at=now() where id=$1 returning id`,
+          [row.id],
+        )
+      ).rows.length,
+      1,
+    );
+    await as("anon", async () =>
+      assert.equal(
+        (await db.query(`select id from ${table} where id=$1`, [row.id])).rows
+          .length,
+        0,
+      ),
+    );
+    await as("resident", async () =>
+      assert.equal(
+        (
+          await db.query(
+            `update ${table} set status='published' where id=$1 returning id`,
+            [row.id],
+          )
+        ).rows.length,
+        0,
+      ),
+    );
+    await as("admin", async () =>
+      assert.equal(
+        (
+          await db.query(
+            `update ${table} set deleted_at=null,status='draft' where id=$1 returning id`,
+            [row.id],
+          )
+        ).rows.length,
+        1,
+      ),
+    );
+  });
+}
+await as("admin", async () => {
+  await assert.rejects(
+    db.query("delete from departments where id=$1", [service.department_id]),
+    (e) => e.code === "23503",
+  );
+  assert.equal(
+    (
+      await db.query(
+        "update departments set active=false where id=$1 returning id",
+        [service.department_id],
+      )
+    ).rows.length,
+    1,
+  );
+  assert.equal(
+    (
+      await db.query("select department_id from services where id=$1", [
+        service.id,
+      ])
+    ).rows[0].department_id,
+    service.department_id,
+  );
+  await db.query("update departments set active=true where id=$1", [
+    service.department_id,
+  ]);
+  const dep = (
+    await db.query(
+      "insert into departments(name,slug) values('Unused','unused-delete') returning id",
+    )
+  ).rows[0];
+  assert.equal(
+    (
+      await db.query("delete from departments where id=$1 returning id", [
+        dep.id,
+      ])
+    ).rows.length,
+    1,
+  );
+});
+console.log(
+  "PASS CRUD lifecycle: real PostgreSQL constraints, content archive/trash/restore, anonymous/resident denial, linked department archive and unused department delete",
+);
 await db.close();

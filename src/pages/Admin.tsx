@@ -5,7 +5,14 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../hooks/Auth";
 import { useSettings } from "../hooks/Settings";
 import { useData, useDebounce } from "../hooks/useData";
-import { list, save, remove, rpc, errorText } from "../services/data";
+import {
+  list,
+  save,
+  updateRow,
+  remove,
+  rpc,
+  errorText,
+} from "../services/data";
 import { requireClient } from "../services/client";
 import { fileUrl, deleteObject } from "../services/files";
 import { resources } from "../config/cms";
@@ -277,6 +284,7 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
     [search, setSearch] = useState(""),
     [page, setPage] = useState(1),
     [status, setStatus] = useState(""),
+    [view, setView] = useState("current"),
     [sort, setSort] = useState("created_at"),
     [editing, setEditing] = useState<Row | null>(null),
     [busy, setBusy] = useState(false),
@@ -299,14 +307,26 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                   ? ["status"]
                   : ["name"],
         eq: {
-          ...(status ? { status } : {}),
+          ...(config?.content && status ? { status } : {}),
+          ...(config?.content && view !== "all" && view !== "trash"
+            ? { deleted_at: null }
+            : {}),
+          ...(config?.content && view === "archive"
+            ? { status: "archived" }
+            : {}),
+          ...(config?.table === "departments" && view !== "all"
+            ? { active: view !== "archive" }
+            : {}),
           ...(resource === "important-announcements"
             ? { placement: "global" }
             : {}),
         },
+        neq:
+          config?.content && view === "current" ? { status: "archived" } : {},
+        notNull: config?.content && view === "trash" ? ["deleted_at"] : [],
         order: sort,
       }),
-    [resource, d, page, status, sort],
+    [resource, d, page, status, sort, view],
   );
   if (!config) return <Empty text="Розділ не знайдено" />;
   const allowed =
@@ -369,16 +389,33 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
             setPage(1);
           }}
         />
+        {(config.content || config.table === "departments") && (
+          <select
+            aria-label="Розділ записів"
+            value={view}
+            onChange={(e) => {
+              setView(e.target.value);
+              setStatus("");
+              setPage(1);
+            }}
+          >
+            <option value="current">Активні записи</option>
+            <option value="archive">Архів</option>
+            {config.content && <option value="trash">Кошик</option>}
+            <option value="all">Усі записи</option>
+          </select>
+        )}
         {config.content && (
           <select
             aria-label="Стан публікації"
             value={status}
             onChange={(e) => {
               setStatus(e.target.value);
+              setView(e.target.value === "archived" ? "archive" : "current");
               setPage(1);
             }}
           >
-            <option value="">Усі стани, включно з архівом</option>
+            <option value="">Усі стани вибраного розділу</option>
             {["draft", "published", "scheduled", "archived"].map((s) => (
               <option key={s} value={s}>
                 {statuses[s]}
@@ -398,7 +435,9 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                 ? "title"
                 : config.table === "faqs"
                   ? "question"
-                  : "status"
+                  : config.fields.some((f) => f.key === "name")
+                    ? "name"
+                    : "status"
             }
           >
             За назвою / станом
@@ -424,7 +463,15 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                   </td>
                   <td data-label="Статус">
                     <Badge
-                      value={r.status || (r.published ? "published" : "Запис")}
+                      value={
+                        r.deleted_at
+                          ? "Кошик"
+                          : config.table === "departments"
+                            ? r.active
+                              ? "Активний"
+                              : "Архів"
+                            : r.status || (r.published ? "published" : "Запис")
+                      }
                     />
                   </td>
                   <td data-label="Оновлено">{datetime(r.updated_at)}</td>
@@ -450,15 +497,21 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                         Історія змін
                       </Button>
                     )}
-                    {config.content && (
+                    {((config.content &&
+                      !r.deleted_at &&
+                      r.status !== "archived") ||
+                      (config.table === "departments" && r.active)) && (
                       <Button
                         className="secondary small"
                         onClick={async () => {
                           try {
-                            await save(config.table, {
+                            await updateRow(config.table, {
                               id: r.id,
-                              status: "archived",
+                              ...(config.table === "departments"
+                                ? { active: false }
+                                : { status: "archived" }),
                             });
+                            toast("Переміщено до архіву");
                             q.reload();
                           } catch (e) {
                             toast(errorText(e), "error");
@@ -468,7 +521,7 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                         Архів
                       </Button>
                     )}
-                    {canCreate && (
+                    {canCreate && !r.deleted_at && (
                       <Button
                         className="secondary small"
                         onClick={async () => {
@@ -482,13 +535,18 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                             return;
                           try {
                             if (config.content)
-                              await save(config.table, {
+                              await updateRow(config.table, {
                                 id: r.id,
                                 deleted_at: new Date().toISOString(),
                                 status: "archived",
                               });
                             else await remove(config.table, r.id);
                             q.reload();
+                            toast(
+                              config.content
+                                ? "Переміщено до кошика"
+                                : "Запис видалено",
+                            );
                           } catch (e) {
                             toast(errorText(e), "error");
                           }
@@ -497,15 +555,18 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                         {config.content ? "До кошика" : "Видалити"}
                       </Button>
                     )}
-                    {r.deleted_at && (
+                    {(r.deleted_at ||
+                      (config.content && r.status === "archived") ||
+                      (config.table === "departments" && !r.active)) && (
                       <Button
                         className="secondary small"
                         onClick={async () => {
                           try {
-                            await save(config.table, {
+                            await updateRow(config.table, {
                               id: r.id,
-                              deleted_at: null,
-                              status: "draft",
+                              ...(config.table === "departments"
+                                ? { active: true }
+                                : { deleted_at: null, status: "draft" }),
                             });
                             q.reload();
                           } catch (e) {
@@ -576,7 +637,9 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                   if (config.table === "account_verifications")
                     clean.verified_by = auth.session!.user.id;
                   if (editing.filename) clean.filename = editing.filename;
-                  await save(config.table, clean);
+                  if (q.data?.rows.some((r) => r.id === editing.id))
+                    await updateRow(config.table, clean);
+                  else await save(config.table, clean);
                   setEditing(null);
                   q.reload();
                   toast("Збережено");

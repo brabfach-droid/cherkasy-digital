@@ -26,6 +26,7 @@ const page = await browser.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 const seed = JSON.parse(fs.readFileSync("public/demo.json", "utf8"));
+for (const r of seed.departments) r.active ??= true;
 const uid = "11111111-1111-4111-8111-111111111111",
   aid = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const profile = {
@@ -173,6 +174,24 @@ await page.route(url + "/**", async (route) => {
     if (v.startsWith("eq."))
       rows = rows.filter((r) => String(r[k]) === v.slice(3));
     if (v === "is.null") rows = rows.filter((r) => r[k] == null);
+    if (v === "not.is.null") rows = rows.filter((r) => r[k] != null);
+    if (v.startsWith("neq."))
+      rows = rows.filter((r) => String(r[k]) !== v.slice(4));
+  }
+  if (req.method() === "PATCH") {
+    const body = req.postDataJSON();
+    assert.equal("id" in body, false, "PATCH should identify row in URL");
+    for (const r of rows) Object.assign(r, body);
+    return route.fulfill({
+      headers,
+      json: req.headers().accept?.includes("vnd.pgrst.object") ? rows[0] : rows,
+    });
+  }
+  if (req.method() === "DELETE") {
+    seed[table] = (seed[table] || []).filter(
+      (r) => !rows.some((x) => x.id === r.id),
+    );
+    return route.fulfill({ headers, json: rows.map((r) => ({ id: r.id })) });
   }
   if (req.method() === "POST") {
     const b = req.postDataJSON();
@@ -274,6 +293,56 @@ await page.getByRole("button", { name: "Надіслати заяву" }).click(
 await page.waitForURL(
   "**/account/applications/cccccccc-cccc-4ccc-8ccc-cccccccccccc",
 );
+// Actual mutation methods and visible archive/trash transitions across every content resource.
+for (const table of ["news", "events", "documents", "services"]) {
+  const item = seed[table].find(
+    (r) => r.status !== "archived" && !r.deleted_at,
+  );
+  await page.goto(base + "admin/" + table);
+  const row = () =>
+    page.locator("tbody tr").filter({ hasText: item.title }).first();
+  await row().getByRole("button", { name: "Архів", exact: true }).click();
+  await row().waitFor({ state: "detached" });
+  assert.equal(item.status, "archived");
+  await page.getByLabel("Розділ записів").selectOption("archive");
+  await row().getByRole("button", { name: "Відновити", exact: true }).click();
+  await row().waitFor({ state: "detached" });
+  assert.equal(item.status, "draft");
+  await page.getByLabel("Розділ записів").selectOption("current");
+  page.once("dialog", (d) => d.accept());
+  await row().getByRole("button", { name: "До кошика", exact: true }).click();
+  await row().waitFor({ state: "detached" });
+  assert.ok(item.deleted_at);
+  await page.getByLabel("Розділ записів").selectOption("trash");
+  await row().getByRole("button", { name: "Відновити", exact: true }).click();
+  await row().waitFor({ state: "detached" });
+  assert.equal(item.deleted_at, null);
+}
+const department = seed.departments[0];
+await page.goto(base + "admin/departments");
+let depRow = () =>
+  page.locator("tbody tr").filter({ hasText: department.name }).first();
+await depRow().getByRole("button", { name: "Архів", exact: true }).click();
+await depRow().waitFor({ state: "detached" });
+assert.equal(department.active, false);
+await page.getByLabel("Розділ записів").selectOption("archive");
+await depRow().getByRole("button", { name: "Відновити", exact: true }).click();
+await depRow().waitFor({ state: "detached" });
+assert.equal(department.active, true);
+await page.goto(base + "admin/news-categories");
+const category = seed.news_categories[0];
+page.once("dialog", (d) => d.accept());
+await page
+  .locator("tbody tr")
+  .filter({ hasText: category.name })
+  .first()
+  .getByRole("button", { name: "Видалити", exact: true })
+  .click();
+await page
+  .locator("tbody tr")
+  .filter({ hasText: category.name })
+  .waitFor({ state: "detached" });
+assert.ok(!seed.news_categories.some((r) => r.id === category.id));
 await page.setViewportSize({ width: 1440, height: 1000 });
 await page.goto(base + "admin/display");
 await page.getByLabel("Назва екрана").fill("ЧЕРКАСИ ТАБЛО");

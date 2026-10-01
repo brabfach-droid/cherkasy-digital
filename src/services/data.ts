@@ -5,6 +5,8 @@ export type Query = {
   search?: string;
   searchColumns?: string[];
   eq?: Record<string, any>;
+  neq?: Record<string, any>;
+  notNull?: string[];
   gte?: Record<string, string>;
   lte?: Record<string, string>;
   page?: number;
@@ -32,7 +34,10 @@ export async function list(table: string, q: Query = {}) {
     for (const [k, v] of Object.entries(q.contains || {}))
       rows = rows.filter((r) => v.every((i) => r[k]?.includes(i)));
     for (const [k, v] of Object.entries(q.eq || {}))
-      rows = rows.filter((r) => r[k] === v);
+      rows = rows.filter((r) => (v === null ? r[k] == null : r[k] === v));
+    for (const [k, v] of Object.entries(q.neq || {}))
+      rows = rows.filter((r) => r[k] !== v);
+    for (const k of q.notNull || []) rows = rows.filter((r) => r[k] != null);
     for (const [k, v] of Object.entries(q.gte || {}))
       rows = rows.filter((r) => r[k] && String(r[k]) >= v);
     for (const [k, v] of Object.entries(q.lte || {}))
@@ -65,6 +70,8 @@ export async function list(table: string, q: Query = {}) {
   for (const [k, v] of Object.entries(q.contains || {})) b = b.contains(k, v);
   for (const [k, v] of Object.entries(q.eq || {}))
     b = v === null ? b.is(k, null) : b.eq(k, v);
+  for (const [k, v] of Object.entries(q.neq || {})) b = b.neq(k, v);
+  for (const k of q.notNull || []) b = b.not(k, "is", null);
   for (const [k, v] of Object.entries(q.gte || {})) b = b.gte(k, v);
   for (const [k, v] of Object.entries(q.lte || {})) b = b.lte(k, v);
   if (q.search) {
@@ -95,9 +102,27 @@ export async function save(table: string, row: Partial<Row>) {
   if (error) throw error;
   return data as Row;
 }
-export async function remove(table: string, id: string) {
-  const { error } = await requireClient().from(table).delete().eq("id", id);
+export async function updateRow(table: string, row: Partial<Row>) {
+  const { id, ...changes } = row;
+  if (!id) throw new Error("Не вказано запис для оновлення.");
+  const { data, error } = await requireClient()
+    .from(table)
+    .update(changes)
+    .eq("id", id)
+    .select()
+    .single();
   if (error) throw error;
+  return data as Row;
+}
+export async function remove(table: string, id: string) {
+  const { data, error } = await requireClient()
+    .from(table)
+    .delete()
+    .eq("id", id)
+    .select("id");
+  if (error) throw error;
+  if (!data?.length)
+    throw new Error("Запис не знайдено або у вас немає прав на видалення.");
 }
 export async function rpc(name: string, args: Record<string, any> = {}) {
   const { data, error } = await requireClient().rpc(name, args);
@@ -106,6 +131,10 @@ export async function rpc(name: string, args: Record<string, any> = {}) {
 }
 export function errorText(e: any) {
   const msg = e?.message || "";
+  if (e?.code === "23503")
+    return "Запис використовується в інших матеріалах. Спочатку змініть їхні зв’язки або перемістіть запис до архіву, якщо ця дія доступна.";
+  if (e?.code === "PGRST116")
+    return "Запис не знайдено або у вас немає прав на зміну.";
   if (msg.includes("Invalid login")) return "Неправильний email або пароль.";
   if (msg.includes("Email not confirmed"))
     return "Підтвердьте email за посиланням у листі.";
