@@ -18,7 +18,7 @@ const server = await createServer({
 });
 await server.listen();
 const browser = await chromium.launch({
-  executablePath: await Chromium.executablePath(),
+  executablePath: process.env.CHROMIUM_PATH || await Chromium.executablePath(),
   args: Chromium.args,
   headless: true,
 });
@@ -145,6 +145,12 @@ await page.route(url + "/**", async (route) => {
   if (u.pathname.includes("/rpc/")) {
     const body = req.postDataJSON() || {};
     let result = null;
+    if(table==='application_service')result=[svc];
+    if(table==='application_assignees'||table==='staff_directory')result=[{user_id:uid,name:'Тестовий Працівник'}];
+    if(['application_linked_documents','document_usage'].includes(table))result=[];
+    if(table==='set_application_metadata'){const a=seed.applications.find(v=>v.id===body.p_id);Object.assign(a,{priority:body.p_priority,deadline:body.p_deadline})}
+    if(table==='change_application'){const a=seed.applications.find(v=>v.id===body.p_id);Object.assign(a,{status:body.p_status,assignee_id:body.p_assignee})}
+
     if (table === "save_draft") {
       result = body.p_id || "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
       const existing = seed.applications.find((r) => r.id === result);
@@ -217,7 +223,7 @@ await page.route(url + "/**", async (route) => {
 await page.route("https://fonts.googleapis.com/**", (r) => r.abort());
 await page.route("https://fonts.gstatic.com/**", (r) => r.abort());
 const base = "http://127.0.0.1:5175/cherkasy-digital/";
-for (const width of process.env.UI_QUICK ? [] : [1440, 375]) {
+for (const width of process.env.UI_QUICK ? [] : [1920,1440,1024,768,430,390]) {
   await page.setViewportSize({ width, height: 1000 });
   for (const p of [
     "account",
@@ -373,6 +379,23 @@ await page.screenshot({
   path: "test-results/display-admin-preview.png",
   fullPage: true,
 });
+// Exercise V3 detail tabs, permissioned metadata controls and staged upload feedback.
+await page.goto(base+'staff/applications/'+aid);await page.getByRole('tab',{name:'Чат',exact:true}).click();
+await page.getByLabel('Повідомлення користувачу / оператору').fill('Повідомлення V3');
+await page.getByRole('button',{name:'Надіслати повідомлення',exact:true}).click();
+await page.getByText('Повідомлення V3',{exact:true}).waitFor();
+await page.getByRole('tab',{name:'Внутрішні нотатки',exact:true}).click();
+await page.getByLabel('Текст внутрішньої нотатки').fill('Внутрішня нотатка V3');
+await page.getByRole('button',{name:'Зберегти внутрішню нотатку',exact:true}).click();
+await page.getByText('Внутрішня нотатка V3',{exact:true}).waitFor();
+await page.getByLabel('Пріоритет',{exact:true}).selectOption('high');
+await page.getByRole('button',{name:'Зберегти',exact:true}).click();
+await page.waitForTimeout(150);assert.equal(seed.applications.find(v=>v.id===aid).priority,'high');
+await page.goto(base+'account/documents');
+await page.locator('.staged input[type=file]').first().setInputFiles({name:'proof.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.7 test')});
+await page.getByText('Готовий до завантаження',{exact:false}).waitFor();
+assert.equal(seed.user_documents.length,0,'staging is not an upload');
+await page.getByRole('button',{name:'Прибрати',exact:true}).click();
 assert.deepEqual(errors, []);
 console.log(
   "PASS: authenticated resident/staff/admin UI fixtures, CMS preview/save, form builder, multistep draft/submit, mobile layout, zero page errors",

@@ -1,3 +1,6 @@
+import {CommandPalette,ThemeControl,categories} from "../components/V3";
+import {rpc,errorText} from "../services/data";
+import {datetime} from "../config/types";
 import { AirAlertStatus, CityStrip } from "../components/CityLive";
 import {
   APP_VERSION,
@@ -15,7 +18,7 @@ import { useSettings } from "../hooks/Settings";
 import { useData } from "../hooks/useData";
 import { list } from "../services/data";
 import { configured, requireClient } from "../services/client";
-import { State, Modal, Popover } from "../components/UI";
+import { State, Modal, Popover, useToast, Button } from "../components/UI";
 const navigation = [
   ["/", "Головна"],
   ["/services", "Послуги"],
@@ -29,12 +32,14 @@ const navigation = [
 export function PublicLayout() {
   const { settings } = useSettings(),
     auth = useAuth(),
-    [open, setOpen] = useState(false);
+    [open, setOpen] = useState(false), [scrolled,setScrolled]=useState(false), [reading,setReading]=useState(false);
+  const toast=useToast();
+  useEffect(()=>{const fn=()=>setScrolled(window.scrollY>24);fn();window.addEventListener("scroll",fn,{passive:true});return()=>window.removeEventListener("scroll",fn)},[]);
   const loc = useLocation();
   const notifications = useData(
     () =>
       auth.session
-        ? list("notifications", { eq: { read_at: null }, size: 5 })
+        ? rpc("sync_announcement_notifications").then(()=>list("notifications", { eq: { read_at: null }, size: 5 }))
         : Promise.resolve({ rows: [], count: 0 }),
     [auth.session?.user.id, loc.pathname],
   );
@@ -59,7 +64,7 @@ export function PublicLayout() {
         До вмісту
       </a>
       <GlobalAnnouncement />
-      <header className="site-header">
+      <header className={"site-header"+(scrolled?" scrolled":"")}>
         <div className="brand-status">
           <Link to="/" className="brand">
             <img src={logo} alt="Логотип порталу" />
@@ -77,11 +82,10 @@ export function PublicLayout() {
               {label}
             </NavLink>
           ))}
+          <div className="mobile-menu-tools"><CommandPalette shortcut={false}/><ThemeControl/></div>
         </nav>
         <div className="header-actions">
-          <Link to="/search" className="icon-button" aria-label="Пошук">
-            <Search size={20} />
-          </Link>
+          <CommandPalette/><ThemeControl/>
           <Popover
             className="notification-menu"
             label={`Сповіщення: ${notifications.data?.count || 0} непрочитаних`}
@@ -99,10 +103,12 @@ export function PublicLayout() {
                     : "/account/notifications"
                 }
               >
-                {n.title}
+                <small>{categories[n.category||n.type]||"Системні"} · {datetime(n.created_at)}</small><span>{n.title}</span>
               </Link>
             ))}
-            {!notifications.data?.count && (
+            {notifications.error&&<p className="field-error">{notifications.error}</p>}
+            {!!notifications.data?.count&&<Button className="secondary small" busy={reading} onClick={async()=>{setReading(true);try{await rpc("set_notification_read");notifications.reload();toast("Позначено прочитаними")}catch(e){toast(errorText(e),"error")}finally{setReading(false)}}}>Позначити всі прочитаними</Button>}
+            {!notifications.error&&!notifications.data?.count && (
               <p>Немає непрочитаних повідомлень</p>
             )}
             <Link to="/account/notifications">Усі сповіщення →</Link>
@@ -315,6 +321,7 @@ export function Workspace({
               {label}
             </NavLink>
           ))}
+          <div className="mobile-menu-tools"><CommandPalette shortcut={false}/><ThemeControl/></div>
         </nav>
       </aside>
       <div className="workspace-content">

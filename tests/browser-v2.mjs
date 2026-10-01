@@ -8,7 +8,7 @@ const server = await preview({
   logLevel: "error",
 });
 const browser = await chromium.launch({
-  executablePath: await Chromium.executablePath(),
+  executablePath: process.env.CHROMIUM_PATH || await Chromium.executablePath(),
   args: Chromium.args,
   headless: true,
 });

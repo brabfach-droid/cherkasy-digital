@@ -24,7 +24,7 @@ import { configured, siteUrl } from "../services/client";
 import { datetime, statuses, type Row } from "../config/types";
 import { Button, Empty, Modal, Pagination, State, useToast } from "./UI";
 import { motionTokens, reveal } from "../config/motion";
-export const APP_VERSION = "2.2.1";
+export const APP_VERSION = "3.0.0";
 export function activeAnnouncements(rows: Row[]) {
   const now = Date.now();
   return rows
@@ -222,7 +222,7 @@ export function QR({
     <p role="status">Готуємо QR…</p>
   );
 }
-export function ApplicationQR({ id }: { id: string }) {
+export function ApplicationQR({ id,kind="application" }: { id: string;kind?:"application"|"appeal" }) {
   const [token, setToken] = useState(""),
     [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -236,7 +236,7 @@ export function ApplicationQR({ id }: { id: string }) {
       {token ? (
         <>
           <QR
-            value={siteUrl() + "status/" + token}
+            value={siteUrl() + (kind==="appeal"?"appeal-status/":"status/") + token}
             label="Перевірити статус заяви"
           />
           <Button
@@ -245,7 +245,7 @@ export function ApplicationQR({ id }: { id: string }) {
             onClick={async () => {
               setBusy(true);
               try {
-                await rpc("revoke_application_public_token", { p_id: id });
+                await rpc("revoke_"+kind+"_public_token", { p_id: id });
                 setToken("");
                 toast("Посилання відкликано");
               } catch (e) {
@@ -265,7 +265,7 @@ export function ApplicationQR({ id }: { id: string }) {
           onClick={async () => {
             setBusy(true);
             try {
-              setToken(await rpc("get_application_public_token", { p_id: id }));
+              setToken(await rpc("get_"+kind+"_public_token", { p_id: id }));
             } catch (e) {
               toast(errorText(e), "error");
             } finally {
@@ -279,18 +279,18 @@ export function ApplicationQR({ id }: { id: string }) {
     </div>
   );
 }
-export function PublicStatus({ token }: { token: string }) {
+export function PublicStatus({ token,kind="application" }: { token: string;kind?:"application"|"appeal" }) {
   const q = useData(
     () =>
       configured
-        ? rpc("public_application_status", { p_token: token })
+        ? rpc("public_"+kind+"_status", { p_token: token })
         : Promise.resolve([]),
-    [token],
+    [token,kind],
   );
   const r = q.data?.[0];
   return (
     <div className="container narrow">
-      <h1>Статус заяви</h1>
+      <h1>{kind==="appeal"?"Статус звернення":"Статус заяви"}</h1>
       <State loading={q.loading} error={q.error}>
         {r ? (
           <div className="panel">

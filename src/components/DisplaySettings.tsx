@@ -103,7 +103,7 @@ export function DisplaySettings({
             value={cfg.news_image_mode}
             onChange={(e) => patch("news_image_mode", e.target.value)}
           >
-            <option value="cover">Заповнює зону</option>
+            <option value="fullbleed">На весь екран із затемненням</option><option value="cover">Заповнює зону</option>
             <option value="contain">Повністю вміщується</option>
           </select>
         </label>

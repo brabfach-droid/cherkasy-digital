@@ -1,5 +1,7 @@
 import { CityProvider } from "./hooks/City";
 import { MotionConfig } from "motion/react";
+import {PublicStatus} from "./components/V2";
+import {useParams} from "react-router-dom";
 import { PageOutlet } from "./components/V2";
 import { lazy, Suspense, useEffect } from "react";
 import { createRoot } from "react-dom/client";
@@ -15,6 +17,9 @@ import {
 } from "./layouts/Layouts";
 import "./styles/global.css";
 import "./styles/display.css";
+import "./styles/tokens.css";
+import "./styles/v3.css";
+function AppealStatusPage(){const {token}=useParams();return <PublicStatus token={token||""} kind="appeal"/>}
 const Display = lazy(() =>
   import("./pages/V2Pages").then((m) => ({ default: m.Display })),
 );
@@ -215,6 +220,7 @@ function App() {
           <Route element={<PublicLayout />}>
             <Route element={<PageOutlet />}>
               <Route path="status/:token" element={<StatusPage />} />
+                <Route path="appeal-status/:token" element={<AppealStatusPage/>}/>
               <Route index element={<Public />} />
               {["services", "news", "documents", "events"].map((t) => (
                 <Route key={t} path={t}>

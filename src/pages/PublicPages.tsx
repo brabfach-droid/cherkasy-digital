@@ -1,3 +1,4 @@
+import {SearchSuggestions,PDFViewer} from "../components/V3";
 import { useCity } from "../hooks/City";
 import { HeroLive } from "../components/CityLive";
 import { Accordion } from "../components/UI";
@@ -147,7 +148,7 @@ export function Home() {
   const blocks: Record<string, React.ReactNode> = {
     popular: (
       <Section title="Популярні послуги" to="/services">
-        <div className="grid three">
+        <div className="grid three service-bento">
           {q.data?.services.rows.map((r) => (
             <Card
               key={r.id}
@@ -186,7 +187,7 @@ export function Home() {
     ),
     now: (
       <Section title="Черкаси зараз" to="/now">
-        <CityNow compact />
+        <div className="dark-city-live"><CityNow compact /></div>
       </Section>
     ),
     announcements: (
@@ -228,18 +229,7 @@ export function Home() {
     ),
     news: (
       <Section title="Останні новини" to="/news">
-        <div className="grid three">
-          {q.data?.news.rows.map((r) => (
-            <div key={r.id}>
-              <Media bucket="news" path={r.cover_path} alt={r.title} />
-              <Card
-                row={r}
-                to={"/news/" + r.slug}
-                subtitle={date(r.published_at)}
-              />
-            </div>
-          ))}
-        </div>
+        <div className="editorial-news">{q.data?.news.rows.map((r,i)=><Link to={"/news/"+r.slug} className={i===0?"news-feature":"news-row"} key={r.id}>{r.cover_path&&<Media bucket="news" path={r.cover_path} alt={r.title}/>}<div><small>{date(r.published_at)}</small><h3>{r.title}</h3><p>{r.summary}</p><span>Читати новину ↗</span></div></Link>)}</div>
       </Section>
     ),
     events: (
@@ -325,7 +315,7 @@ export function Home() {
               <ArrowRight size={22} />
             </Button>
           </form>
-          <div className="quick-links">
+          <SearchSuggestions query={query}/><div className="quick-links">
             <span>Часто шукають:</span>
             <Link to="/services">Послуги</Link>
             <Link to="/appeals">Звернення</Link>
@@ -620,6 +610,7 @@ export function Detail() {
         ? "documents"
         : "events";
   const q = useData(() => get(table, "slug", slug!), [table, slug]);
+  const related=useData(()=>q.data?.category_id&&["news","documents"].includes(table)?list(table,{visible:true,eq:{category_id:q.data.category_id},neq:{id:q.data.id},size:3}):Promise.resolve({rows:[],count:0}),[table,q.data?.id,q.data?.category_id]);
   const auth = useAuth(),
     toast = useToast();
   const saved = useData(
@@ -796,11 +787,7 @@ export function Detail() {
                   )}
                 </div>
                 {pdf ? (
-                  <iframe
-                    className="pdf-viewer"
-                    src={pdf}
-                    title={q.data.title}
-                  />
+                  <div className="document-split"><PDFViewer url={pdf} title={q.data.title}/><aside className="panel"><p className="eyebrow">Відомості про документ</p><h2>{q.data.title}</h2><p>№ {q.data.document_number||"—"}</p><p>{date(q.data.date)}</p><p>{q.data.description}</p><FileLink bucket="documents" path={q.data.file_path} name={q.data.filename||"Завантажити"} download/></aside></div>
                 ) : (
                   <Empty
                     text={
@@ -863,6 +850,7 @@ export function Detail() {
                 )}
               </article>
             )}
+            {!!related.data?.count&&<section className="section"><h2>Пов’язані матеріали</h2><div className="related-materials">{related.data.rows.map(r=><Card key={r.id} row={r} to={"/"+table+"/"+r.slug}/>)}</div></section>}
           </>
         )}
       </State>

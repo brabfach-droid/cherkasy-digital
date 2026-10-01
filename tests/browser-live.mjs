@@ -18,7 +18,7 @@ const endpoint = "https://live-fixture.supabase.co",
   });
 await server.listen();
 const browser = await chromium.launch({
-    executablePath: await Chromium.executablePath(),
+    executablePath: process.env.CHROMIUM_PATH || await Chromium.executablePath(),
     args: Chromium.args,
     headless: true,
   }),
@@ -109,7 +109,7 @@ for (const width of [1440, 1024, 768, 375, 320]) {
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
-    "overflow " + width,
+    "overflow " + width+JSON.stringify(await page.evaluate(()=>[...document.querySelectorAll("body *")].filter(e=>e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,cls:String(e.className),x:Math.round(e.getBoundingClientRect().right)})).slice(0,12))),
   );
   await page.locator(".air-alert-status").click();
   await page.getByRole("dialog", { name: "Повітряна тривога" }).waitFor();

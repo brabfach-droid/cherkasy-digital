@@ -932,3 +932,7 @@
     animation: none !important;
   }
 }
+
+.broadcast-scene.fullbleed{position:relative}.broadcast-scene.fullbleed .broadcast-photo{position:absolute;inset:0;width:100%;height:100%}.broadcast-scene.fullbleed .broadcast-photo:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#081510eb,#08151045)}.broadcast-scene.fullbleed .broadcast-story{position:relative;z-index:1;width:62%;padding:3vw}.event-date{display:flex;align-items:baseline;gap:10px}.event-date strong{font-size:48px}.notification-chips{display:flex;gap:8px}.notification-chips button{white-space:nowrap}
+
+.broadcast-scene.scene-news.fullbleed{display:flex;align-items:center}.broadcast-scene.scene-news.fullbleed .broadcast-story{width:65%;margin:0}

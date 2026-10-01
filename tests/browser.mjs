@@ -10,7 +10,7 @@ import Chromium from "@sparticuz/chromium";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 const browser = await chromium.launch({
-  executablePath: await Chromium.executablePath(),
+  executablePath: process.env.CHROMIUM_PATH || await Chromium.executablePath(),
   args: Chromium.args,
   headless: true,
 });

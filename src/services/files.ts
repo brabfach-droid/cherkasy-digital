@@ -37,6 +37,7 @@ export async function upload(
     file.size > 5 * 1024 * 1024
   )
     throw new Error("Для аватара й assets ліміт — 5 МБ.");
+  if (ext === "ico" && bucket !== "site-assets") throw new Error("ICO дозволено лише для favicon.");
   const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
   const c = requireClient();
   const {

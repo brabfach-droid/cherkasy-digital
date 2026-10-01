@@ -13,6 +13,7 @@ for (let run = 0; run < 2; run++)
     "04_storage",
     "05_seed",
     "08_v2",
+    "migrations/v3_upgrade",
   ]) {
     let sql = await readFile(
       new URL("../supabase/" + file + ".sql", import.meta.url),
@@ -564,4 +565,61 @@ await as("admin", async () => {
 console.log(
   "PASS CRUD lifecycle: real PostgreSQL constraints, content archive/trash/restore, anonymous/resident denial, linked department archive and unused department delete",
 );
+// V3 regression coverage against actual PostgreSQL RLS and SECURITY DEFINER functions.
+let v3app,v3doc,v3appeal,v3token;
+await db.exec('reset role');
+await db.query("select set_config('request.jwt.claim.sub','',false)");
+await db.query("insert into applications(user_id,service_id,department_id,form_snapshot) values($1,$2,$3,$4) returning id",[users.resident,service.id,service.department_id,[{key:'proof',label:'Доказ',type:'pdf',required:true,validation:{},options:[]}]]).then(r=>v3app=r.rows[0].id);
+const docpath='personal/'+users.resident+'/v3-proof.pdf';
+await as('resident',async()=>{
+ await db.query("insert into storage.objects(bucket_id,name) values('service-documents',$1)",[docpath]);
+ v3doc=(await db.query("insert into user_documents(user_id,name,path,mime_type,size_bytes) values($1,'proof.pdf',$2,'application/pdf',100) returning id",[users.resident,docpath])).rows[0].id;
+ await assert.rejects(db.query('select set_application_metadata($1,$2,null)',[v3app,'urgent']));
+ await assert.rejects(db.query('select submit_application($1)',[v3app]));
+ await db.query('select link_application_document($1,$2,$3)',[v3app,v3doc,'proof']);
+ await assert.rejects(db.query('delete from user_documents where id=$1',[v3doc]));
+ await assert.rejects(db.query("update user_documents set path=path||'x' where id=$1",[v3doc]));
+ assert.equal((await db.query('delete from storage.objects where name=$1 returning id',[docpath])).rows.length,0);
+ assert.equal((await db.query('select * from application_linked_documents($1)',[v3app])).rows.length,1);
+ await db.query('select submit_application($1)',[v3app]);
+ assert.equal((await db.query('select * from document_usage($1)',[v3doc])).rows.length,1);
+});
+await as('other',async()=>{
+ assert.equal((await db.query('select * from application_linked_documents($1)',[v3app])).rows.length,0);
+ assert.equal((await db.query('select * from storage.objects where name=$1',[docpath])).rows.length,0);
+ await assert.rejects(db.query('select link_application_document($1,$2,$3)',[v3app,v3doc,'proof']));
+});
+await as('operator',async()=>{
+ await db.query('select set_application_metadata($1,$2,$3)',[v3app,'high','2026-12-01T00:00:00Z']);
+ assert.equal((await db.query('select priority from applications where id=$1',[v3app])).rows[0].priority,'high');
+ assert.equal((await db.query('select * from storage.objects where name=$1',[docpath])).rows.length,1);
+ await db.query("insert into application_messages(application_id,user_id,message,internal) values($1,$2,'Private V3 note',true)",[v3app,users.operator]);
+ await assert.rejects(db.query("insert into application_messages(application_id,user_id,message,file_ids) values($1,$2,'Bad attachment',array[gen_random_uuid()])",[v3app,users.operator]));
+});
+await as('resident',async()=>assert.equal((await db.query('select * from application_messages where application_id=$1 and internal',[v3app])).rows.length,0));
+await as('viewer',async()=>{assert.equal((await db.query('select * from application_messages where application_id=$1 and internal',[v3app])).rows.length,1);await assert.rejects(db.query('select set_application_metadata($1,$2,null)',[v3app,'urgent']))});
+await as('operator',async()=>{
+ await db.query('select transfer_application($1,$2,$3)',[v3app,'88888888-8888-4888-8888-888888888888','Належить іншому департаменту']);
+ assert.equal((await db.query('select * from applications where id=$1',[v3app])).rows.length,0);
+ assert.equal((await db.query('select * from storage.objects where name=$1',[docpath])).rows.length,0);
+});
+await as('outsider',async()=>assert.equal((await db.query('select * from applications where id=$1',[v3app])).rows.length,1));
+await as('resident',async()=>{
+ const category=(await db.query('select id from appeal_categories limit 1')).rows[0].id;
+ v3appeal=(await db.query('select create_appeal($1,$2,$3,$4) as id',[category,'Private title','Private address','Private appeal message text'])).rows[0].id;
+ v3token=(await db.query('select get_appeal_public_token($1) as token',[v3appeal])).rows[0].token;
+ assert.equal(v3token.length,64);
+});
+await as('anon',async()=>{
+ const status=(await db.query('select * from public_appeal_status($1)',[v3token])).rows[0];assert.equal(status.type,'Звернення мешканця');assert.equal(Object.keys(status).length,5);assert.ok(!JSON.stringify(status).includes('Private'));
+});
+await as('admin',async()=>{await db.query('select revoke_appeal_public_token($1)',[v3appeal]);await db.query("insert into announcements(title,message,type,placement,active,start_at,notify_center) values('V3 announcement','New municipal notice','warning','global',true,now(),true)")});
+await as('anon',async()=>assert.equal((await db.query('select * from public_appeal_status($1)',[v3token])).rows.length,0));
+await as('resident',async()=>{
+ await db.query('select sync_announcement_notifications()');await db.query('select sync_announcement_notifications()');
+ assert.equal((await db.query("select * from notifications where title='V3 announcement'")).rows.length,1);
+ await assert.rejects(db.query("insert into notifications(user_id,type,title,message) values($1,'system','Spoof','fake')",[users.resident]));
+});
+console.log('PASS V3: private document reuse, required file validation, immutable used files, metadata privileges, transfer isolation, internal notes, attachment checks, appeal token privacy/revocation, server notification deduplication');
+
 await db.close();

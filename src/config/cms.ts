@@ -152,6 +152,7 @@ export const resources: Record<string, Resource> = {
       },
       { key: "active", label: "Активне", type: "checkbox" },
       { key: "dismissible", label: "Дозволити закриття", type: "checkbox" },
+      {key:"notify_center",label:"Також надіслати у центр сповіщень",type:"checkbox"},
       { key: "button_text", label: "Текст кнопки" },
       { key: "button_url", label: "Посилання кнопки", type: "url" },
     ],

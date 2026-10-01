@@ -1,17 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { errorText } from "../services/data";
 export function useData<T>(loader: () => Promise<T>, deps: any[] = []) {
   const [data, setData] = useState<T | null>(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [version, setVersion] = useState(0);
+  const resolved = useRef<string | null>(null);
+  const key = JSON.stringify(deps);
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    if (resolved.current !== key) setLoading(true);
     setError("");
     loader()
       .then((v) => {
-        if (active) setData(v);
+        if (active) { resolved.current = key; setData(v); }
       })
       .catch((e) => {
         if (active) setError(errorText(e));

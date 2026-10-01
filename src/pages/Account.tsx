@@ -1,3 +1,4 @@
+import {ApplicationProgress,Deadline,categories} from "../components/V3";
 import { ActivityTimeline, VerificationStatus } from "../components/V2";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -49,21 +50,24 @@ function AccountContent() {
     count: number;
     notes?: Row[];
     services?: Row[];
+    unread?:number;
   }>(async () => {
     if (name === "overview") {
-      const [apps, notes, services] = await Promise.all([
+      const [apps, notes, services,unread] = await Promise.all([
         list("applications", {
           size: 100,
           eq: { user_id: auth.session!.user.id },
         }),
         list("notifications", { size: 5 }),
-        list("services", { size: 3, visible: true }),
+        list("services", { size: 1000, visible: true }),
+        list("notifications",{eq:{read_at:null},size:1}),
       ]);
       return {
         rows: apps.rows,
         count: apps.count,
         notes: notes.rows,
         services: services.rows,
+        unread:unread.count,
       };
     }
     if (name === "profile")
@@ -102,7 +106,7 @@ function AccountContent() {
           user_id: auth.session!.user.id,
           ...(name === "drafts" ? { status: "draft" } : {}),
           ...(name === "notifications" && notificationType
-            ? { type: notificationType }
+            ? { category: notificationType }
             : {}),
         },
       },
@@ -164,8 +168,8 @@ function AccountContent() {
         )}
       </div>
       {name === "notifications" && (
-        <div className="filters">
-          <select
+        <div className="filters notification-chips">{[["","Усі"],...Object.entries(categories)].map(([v,l])=><button className={"button "+(notificationType===v?"":"secondary")} key={v} onClick={()=>{setNotificationType(v);setPage(1)}}>{l}</button>)}
+          <select style={{display:"none"}}
             aria-label="Тип сповіщень"
             value={notificationType}
             onChange={(e) => {
@@ -216,8 +220,7 @@ function AccountContent() {
                 ],
                 [
                   "Непрочитані",
-                  ((q.data as any)?.notes || []).filter((r: Row) => !r.read_at)
-                    .length,
+                  q.data?.unread||0,
                 ],
               ].map(([label, count]) => (
                 <div className="stat" key={String(label)}>
@@ -226,6 +229,7 @@ function AccountContent() {
                 </div>
               ))}
             </div>
+            <section className="active-applications"><h2>Мої активні заяви</h2>{q.data?.rows.filter(r=>!["draft","completed","rejected","cancelled"].includes(r.status)).map(r=><article className="list-item" key={r.id}><div className="row"><Link to={"/account/applications/"+r.id}><h3>{r.number}</h3><p>{q.data?.services?.find(s=>s.id===r.service_id)?.title||"Заява на міську послугу"}</p></Link><Badge value={r.status}/></div><ApplicationProgress status={r.status}/><Deadline value={r.deadline}/><small>Оновлено: {datetime(r.updated_at)}</small>{r.status==="needs_more_info"&&<strong className="field-error">Потрібна ваша відповідь</strong>}</article>)}{!q.data?.rows.some(r=>!["draft","completed","rejected","cancelled"].includes(r.status))&&<p>Усі справи завершені. Нову заяву можна подати в каталозі послуг.</p>}</section>
             <h2>Останні заяви</h2>
             <Records
               rows={q.data?.rows.slice(0, 5) || []}
@@ -478,6 +482,7 @@ function AccountContent() {
                   path={r.path}
                   name={r.name}
                 />
+                <div><small>{r.mime_type} · {Math.ceil((r.size_bytes||0)/1024)} КБ · {datetime(r.created_at)}</small><DocumentUsage id={r.id}/></div>
                 <Button
                   className="secondary small"
                   onClick={() => {
@@ -568,6 +573,7 @@ function AccountContent() {
     </>
   );
 }
+function DocumentUsage({id}:{id:string}){const q=useData(()=>rpc("document_usage",{p_id:id}),[id]);return <div>{q.data?.map((r:Row)=><Link key={r.id} to={"/account/applications/"+r.id}>Використано: {r.number||"Чернетка"}</Link>)}{q.error&&<small className="field-error">{q.error}</small>}</div>}
 function Records({ rows, kind }: { rows: Row[]; kind: string }) {
   return rows.length ? (
     <div className="record-list">

@@ -19,3 +19,7 @@ Rich text зберігається як Markdown; при відображенн�
 ## Межі
 
 Перед публічним використанням налаштуйте SMTP, правові тексти, відповідальні органи, backups і політику даних. Тести перевіряють SQL у PGlite та локальний frontend. Реальні hosted Auth, Storage HTTP, cron і Edge Function з вашим токеном потребують перевірки у вашому проєкті. Автоматичних SMS/BankID/Дія/ЕЦП, платежів, антивірусу чи e-mail розсилок немає. Усі системні повідомлення — у внутрішньому центрі сповіщень.
+
+## V3
+
+New metadata changes and department transfers are permissioned SECURITY DEFINER RPCs with fixed search_path, parent-row locking, reason/history recording and scoped current department checks. Personal documents retain private Storage access; references require owner + valid form field/MIME/count. Used documents cannot change metadata or be removed; former departments lose linked file access after transfer. Storage policies are explicitly rebound after renaming the legacy file_access function. Internal notes cannot carry attachments, and public message attachment IDs must belong to the message author's application. Public appeal tokens are 64 cryptographically random hexadecimal characters and expose no applicant identity, text, location or files. Notification deliveries are created on the server with one delivery per announcement version/user, and ordinary authenticated users have no notification insert policy.

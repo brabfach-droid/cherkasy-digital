@@ -57,7 +57,7 @@ function NewsImage({ row, mode }: { row: Row; mode: string }) {
   useEffect(() => setFailed(false), [row.id, row.cover_path]);
   const src =
     row.cover_path && configured
-      ? requireClient().storage.from("site-assets").getPublicUrl(row.cover_path)
+      ? requireClient().storage.from("news").getPublicUrl(row.cover_path)
           .data.publicUrl
       : "";
   return (
@@ -409,7 +409,7 @@ export default function LiveDisplay() {
         <AnimatePresence mode="wait" initial={false}>
           <motion.section
             key={current.id}
-            className={"display-scene broadcast-scene scene-" + scene}
+            className={"display-scene broadcast-scene scene-" + scene+(cfg.news_image_mode==="fullbleed"?" fullbleed":"")}
             initial={{
               opacity: 0,
               x: reduced || cfg.transition === "fade" ? 0 : 35,

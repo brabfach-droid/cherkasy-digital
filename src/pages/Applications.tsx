@@ -1,3 +1,5 @@
+import {ApplicationProgress,Deadline,DocumentPicker,LinkedDocuments,priorities} from "../components/V3";
+import {Modal} from "../components/UI";
 import { ApplicationQR } from "../components/V2";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -49,7 +51,7 @@ export function Apply() {
     [busy, setBusy] = useState(false),
     [initialized, setInitialized] = useState(false),
     [initError, setInitError] = useState(""),
-    [lastSaved, setLastSaved] = useState("");
+    [lastSaved, setLastSaved] = useState(""), [saveState,setSaveState]=useState("");
   const queue = useRef<Promise<any>>(Promise.resolve());
   const files = useData(
     () =>
@@ -61,6 +63,7 @@ export function Apply() {
         : Promise.resolve({ rows: [], count: 0 }),
     [draftId],
   );
+  const linked=useData(()=>draftId?rpc("application_linked_documents",{p_id:draftId}):Promise.resolve([]),[draftId]);
   useEffect(() => {
     if (!q.data) return;
     let active = true;
@@ -100,6 +103,7 @@ export function Apply() {
     };
   }, [q.data?.service.id]);
   function persist() {
+    setSaveState("Зберігаємо…");
     const payload = structuredClone(dataRef.current);
     queue.current = queue.current
       .catch(() => {})
@@ -116,6 +120,7 @@ export function Apply() {
             new Date(),
           ),
         );
+        setSaveState("Збережено");
         return id;
       });
     return queue.current;
@@ -123,7 +128,7 @@ export function Apply() {
   useEffect(() => {
     if (!initialized) return;
     const t = setTimeout(() => {
-      void persist().catch((e) => toast(errorText(e), "error"));
+      void persist().catch((e) => setSaveState("Не вдалося зберегти: "+errorText(e)));
     }, 1000);
     return () => clearTimeout(t);
   }, [data, initialized]);
@@ -134,7 +139,7 @@ export function Apply() {
         step === 1 ? !["file", "pdf", "image"].includes(f.type) : true,
       ),
       data,
-      files.data?.rows || [],
+      [...(files.data?.rows || []),...(linked.data||[])],
     );
     if (Object.keys(errors).length) {
       setErrors(errors);
@@ -168,6 +173,7 @@ export function Apply() {
           ))}
         </div>
         <div className="panel">
+          {!!Object.keys(errors).length&&<div className="error-summary" role="alert"><strong>Перевірте {Object.keys(errors).length} поля</strong>{Object.entries(errors).map(([key,value])=><a key={key} href={"#field-"+key} onClick={()=>document.getElementById("field-"+key)?.focus()}>{value}</a>)}</div>}
           {step === 1 && (
             <DynamicFields
               fields={fields}
@@ -195,6 +201,8 @@ export function Apply() {
                       bucket="application-files"
                       prefix={a.session!.user.id + "/" + draftId}
                       kind={f.type}
+                      multiple={!!f.validation.multiple}
+                      maxFiles={f.validation.maxFiles||10}
                       onUploaded={async (path, file) => {
                         try {
                           await save("application_files", {
@@ -215,6 +223,7 @@ export function Apply() {
                         }
                       }}
                     />
+                    <DocumentPicker application={draftId} field={f.key} kind={f.type} onChange={linked.reload}/>
                     {errors[f.key] && (
                       <p className="field-error">{errors[f.key]}</p>
                     )}
@@ -223,6 +232,7 @@ export function Apply() {
               {!fields.some((f) =>
                 ["file", "pdf", "image"].includes(f.type),
               ) && <p>Ця послуга не вимагає файлів.</p>}
+              <LinkedDocuments application={draftId} editable onChange={linked.reload}/>
               {files.data?.rows.map((f) => (
                 <div className="row" key={f.id}>
                   <FileLink
@@ -280,7 +290,7 @@ export function Apply() {
                     </div>
                   ))}
               </dl>
-              <p>Додано файлів: {files.data?.count || 0}</p>
+              <p>Додано файлів: {(files.data?.count || 0)+(linked.data?.length||0)}</p>
             </>
           )}
           {step === 4 && (
@@ -357,9 +367,9 @@ export function Apply() {
             )}
           </div>
           <small className="muted">
-            {lastSaved
+            {saveState|| (lastSaved
               ? "Автозбережено о " + lastSaved
-              : "Чернетка створена. Зміни збережуться автоматично."}
+              : "Чернетка створена. Зміни збережуться автоматично.")}
           </small>
         </div>
       </State>
@@ -373,296 +383,24 @@ const transitions: Record<string, string[]> = {
   needs_more_info: ["in_review", "rejected", "cancelled"],
   approved: ["completed", "cancelled"],
 };
-export function ApplicationDetail() {
-  const { id } = useParams(),
-    auth = useAuth(),
-    toast = useToast();
-  const staff = !window.location.pathname.includes("/account/");
-  const q = useData(async () => {
-    const app = await get("applications", "id", id!);
-    const [service, files, messages, history, profile, staffList] =
-      await Promise.all([
-        get("services", "id", app.service_id),
-        list("application_files", { eq: { application_id: id }, size: 100 }),
-        list("application_messages", {
-          eq: { application_id: id },
-          size: 100,
-          ascending: true,
-        }),
-        list("application_status_history", {
-          eq: { application_id: id },
-          size: 100,
-          ascending: true,
-        }),
-        get("profiles", "user_id", app.user_id),
-        staff
-          ? list("staff_departments", {
-              eq: { department_id: app.department_id },
-              size: 100,
-            })
-          : Promise.resolve({ rows: [], count: 0 }),
-      ]);
-    return {
-      app,
-      service,
-      files: files.rows,
-      messages: messages.rows,
-      history: history.rows,
-      profile,
-      staff: staffList.rows,
-    };
-  }, [id]);
-  const [message, setMessage] = useState(""),
-    [internal, setInternal] = useState(false),
-    [target, setTarget] = useState(""),
-    [note, setNote] = useState(""),
-    [assignee, setAssignee] = useState(""),
-    [busy, setBusy] = useState(false);
-  const app = q.data?.app;
-  const canProcess =
-    staff &&
-    auth.roles.some((r) =>
-      ["super_admin", "admin", "department_admin", "operator"].includes(r),
-    );
-  useEffect(() => {
-    setAssignee(app?.assignee_id || "");
-    setTarget(app?.status || "");
-  }, [app?.status, app?.assignee_id]);
-  async function run(fn: () => Promise<any>) {
-    setBusy(true);
-    try {
-      await fn();
-      q.reload();
-      toast("Збережено");
-    } catch (e) {
-      toast(errorText(e), "error");
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <State loading={q.loading} error={q.error}>
-      {q.data && (
-        <>
-          <Link to={staff ? "/staff/applications" : "/account/applications"}>
-            ← Усі заяви
-          </Link>
-          <div className="section-heading">
-            <h1>{app!.number || "Чернетка"}</h1>
-            <Badge value={app!.status} />
-          </div>
-          <p>
-            {q.data.service.title} · {datetime(app!.created_at)}
-          </p>
-          {app!.status === "draft" && !staff && (
-            <Link
-              className="button"
-              to={"/services/" + q.data.service.slug + "/apply?draft=" + id}
-            >
-              Продовжити заповнення
-            </Link>
-          )}
-          {!staff && app!.status !== "draft" && <ApplicationQR id={app!.id} />}
-          <div className="detail-grid">
-            <div>
-              <div className="panel">
-                <h2>Дані заяви</h2>
-                <p>
-                  Заявник: {q.data.profile.first_name}{" "}
-                  {q.data.profile.last_name} · {q.data.profile.email}
-                </p>
-                <dl>
-                  {(app!.form_snapshot || [])
-                    .filter(
-                      (f: FormField) =>
-                        !["heading", "information"].includes(f.type),
-                    )
-                    .map((f: FormField) => (
-                      <div key={f.key}>
-                        <dt>{f.label}</dt>
-                        <dd>{JSON.stringify(app!.data[f.key] ?? "—")}</dd>
-                      </div>
-                    ))}
-                </dl>
-              </div>
-              <div className="panel">
-                <h2>Документи</h2>
-                {q.data.files.map((f) => (
-                  <FileLink
-                    key={f.id}
-                    bucket="application-files"
-                    path={f.path}
-                    name={f.name}
-                  />
-                ))}
-                {!q.data.files.length && <p>Файлів немає.</p>}
-                {app!.status === "needs_more_info" && !staff && (
-                  <FileUpload
-                    bucket="application-files"
-                    prefix={auth.session!.user.id + "/" + id}
-                    onUploaded={async (path, file) => {
-                      await save("application_files", {
-                        application_id: id,
-                        user_id: auth.session!.user.id,
-                        path,
-                        name: file.name,
-                        mime_type: file.type,
-                        size_bytes: file.size,
-                      });
-                      q.reload();
-                    }}
-                  />
-                )}
-              </div>
-              {app!.status !== "draft" && (
-                <div className="panel">
-                  <h2>Повідомлення</h2>
-                  {q.data.messages.map((m) => (
-                    <div
-                      key={m.id}
-                      className={
-                        "message " +
-                        (m.user_id === auth.session?.user.id ? "own" : "")
-                      }
-                    >
-                      <small>
-                        {m.internal ? "Внутрішня нотатка · " : ""}
-                        {datetime(m.created_at)}
-                      </small>
-                      <p>{m.message}</p>
-                    </div>
-                  ))}
-                  {!q.data.messages.length && <p>Повідомлень ще немає.</p>}
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void run(async () => {
-                        await save("application_messages", {
-                          application_id: id,
-                          user_id: auth.session!.user.id,
-                          message,
-                          internal: staff && internal,
-                        });
-                        setMessage("");
-                      });
-                    }}
-                  >
-                    <label>
-                      Повідомлення
-                      <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        minLength={1}
-                        maxLength={10000}
-                        required
-                      />
-                    </label>
-                    {canProcess && (
-                      <label className="check">
-                        <input
-                          type="checkbox"
-                          checked={internal}
-                          onChange={(e) => setInternal(e.target.checked)}
-                        />
-                        Внутрішня нотатка
-                      </label>
-                    )}
-                    <Button busy={busy} disabled={staff && !canProcess}>
-                      Надіслати
-                    </Button>
-                  </form>
-                </div>
-              )}
-            </div>
-            <aside>
-              <div className="panel">
-                <h2>Історія</h2>
-                <ol className="timeline">
-                  {q.data.history.map((h) => (
-                    <li key={h.id}>
-                      <b>{statuses[h.new_status] || h.new_status}</b>
-                      <small>{datetime(h.created_at)}</small>
-                      <p>{h.note}</p>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-              {canProcess && app!.status !== "draft" && (
-                <form
-                  className="panel"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void run(() =>
-                      rpc("change_application", {
-                        p_id: id,
-                        p_status: target,
-                        p_note: note,
-                        p_assignee: assignee || null,
-                      }),
-                    );
-                  }}
-                >
-                  <h2>Опрацювання</h2>
-                  <label>
-                    Статус
-                    <select
-                      value={target}
-                      onChange={(e) => setTarget(e.target.value)}
-                    >
-                      {[app!.status, ...(transitions[app!.status] || [])].map(
-                        (s) => (
-                          <option key={s} value={s}>
-                            {statuses[s]}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </label>
-                  <label>
-                    Відповідальний
-                    <select
-                      value={assignee}
-                      onChange={(e) => setAssignee(e.target.value)}
-                    >
-                      <option value="">Не призначено</option>
-                      {q.data.staff.map((s) => (
-                        <option key={s.id} value={s.user_id}>
-                          {s.user_id}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Повідомлення заявнику
-                    <textarea
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                    />
-                  </label>
-                  <Button busy={busy}>Зберегти</Button>
-                </form>
-              )}
-              {!staff &&
-                ["draft", "submitted", "received", "needs_more_info"].includes(
-                  app!.status,
-                ) && (
-                  <Button
-                    className="secondary"
-                    busy={busy}
-                    onClick={() => {
-                      if (window.confirm("Скасувати цю заяву?"))
-                        void run(() => rpc("cancel_application", { p_id: id }));
-                    }}
-                  >
-                    Скасувати заяву
-                  </Button>
-                )}
-            </aside>
-          </div>
-        </>
-      )}
-    </State>
-  );
+export function ApplicationDetail(){
+ const {id}=useParams(),auth=useAuth(),toast=useToast();const staff=!window.location.pathname.includes("/account/");
+ const q=useData(async()=>{const app=await get("applications","id",id!);const [service,files,messages,history,profile,assignees,deps,transfers]=await Promise.all([rpc("application_service",{p_id:id}),list("application_files",{eq:{application_id:id},size:100}),list("application_messages",{eq:{application_id:id},size:100,ascending:true}),list("application_status_history",{eq:{application_id:id},size:100,ascending:true}),get("profiles","user_id",app.user_id),staff?rpc("application_assignees",{p_id:id}):Promise.resolve([]),list("departments",{size:100}),list("application_transfers",{eq:{application_id:id},size:100,ascending:true})]);return {app,service:service[0]||{title:"Послуга",slug:""},files:files.rows,messages:messages.rows,history:history.rows,profile,assignees,deps:deps.rows,transfers:transfers.rows}},[id]);
+ const [tab,setTab]=useState("overview"),[message,setMessage]=useState(""),[target,setTarget]=useState(""),[note,setNote]=useState(""),[assignee,setAssignee]=useState(""),[assigneeSearch,setAssigneeSearch]=useState(""),[priority,setPriority]=useState("normal"),[deadline,setDeadline]=useState(""),[busy,setBusy]=useState(false),[transfer,setTransfer]=useState(false),[department,setDepartment]=useState(""),[reason,setReason]=useState(""),[attachmentIds,setAttachmentIds]=useState<string[]>([]);
+ const app=q.data?.app;const canProcess=staff&&auth.roles.some(r=>["super_admin","admin","department_admin","operator"].includes(r));
+ useEffect(()=>{setAssignee(app?.assignee_id||"");setTarget(app?.status||"");setPriority(app?.priority||"normal");setDeadline(app?.deadline?new Date(app.deadline).toISOString().slice(0,16):"")},[app?.status,app?.assignee_id,app?.priority,app?.deadline]);
+ useEffect(()=>{const t=setInterval(q.reload,30000);return()=>clearInterval(t)},[id]);
+ async function run(fn:()=>Promise<any>){setBusy(true);try{await fn();q.reload();toast("Збережено")}catch(e){toast(errorText(e),"error")}finally{setBusy(false)}}
+ const tabs=[["overview","Огляд"],["files","Файли"],["chat","Чат"],["history","Історія"],...(staff?[["internal","Внутрішні нотатки"]]:[])];
+ return <State loading={q.loading} error={q.error}>{q.data&&<><Link to={staff?"/staff/applications":"/account/applications"}>← Усі заяви</Link><div className="section-heading application-heading"><h1>{app!.number||"Чернетка"}</h1><div><Badge value={app!.status}/><small>{priorities[app!.priority||"normal"]}</small><Deadline value={app!.deadline}/></div></div><p>{q.data.service.title} · {datetime(app!.created_at)}</p>{app!.status==="needs_more_info"&&!staff&&<div className="alert" role="status"><strong>Потрібна ваша відповідь</strong><p>Перегляньте повідомлення оператора та додайте необхідні документи.</p><Button onClick={()=>setTab("chat")}>Відкрити чат</Button></div>}<ApplicationProgress status={app!.status}/>{app!.status==="draft"&&!staff&&<Link className="button" to={"/services/"+q.data.service.slug+"/apply?draft="+id}>Продовжити заповнення</Link>}{app!.status!=="draft"&&(!staff||auth.roles.some(r=>["admin","super_admin"].includes(r)))&&<ApplicationQR id={app!.id}/>}
+ <div className="app-tabs" role="tablist">{tabs.map(([v,l])=><button key={v} role="tab" aria-selected={tab===v} className={tab===v?"active":""} onClick={()=>setTab(v)}>{l}</button>)}</div><div className="detail-grid"><div role="tabpanel">
+ {tab==="overview"&&<div className="panel"><h2>Дані заяви</h2><p>Заявник: {q.data.profile.first_name} {q.data.profile.last_name} · {q.data.profile.email}</p><dl>{(app!.form_snapshot||[]).filter((f:FormField)=>!["heading","information","file","image","pdf"].includes(f.type)).map((f:FormField)=><div key={f.key}><dt>{f.label}</dt><dd>{Array.isArray(app!.data[f.key])?app!.data[f.key].join(", "):typeof app!.data[f.key]==="boolean"?(app!.data[f.key]?"Так":"Ні"):String(app!.data[f.key]??"—")}</dd></div>)}</dl></div>}
+ {tab==="files"&&<div className="panel"><h2>Документи</h2>{q.data.files.map(f=><div className="list-item" key={f.id}><FileLink bucket="application-files" path={f.path} name={f.name}/><small>{datetime(f.created_at)} · {Math.ceil((f.size_bytes||0)/1024)} КБ</small></div>)}<LinkedDocuments application={id!}/>{!q.data.files.length&&<p>Нових завантажень немає. Вибрані власні документи показано вище.</p>}{app!.status==="needs_more_info"&&!staff&&<FileUpload bucket="application-files" prefix={auth.session!.user.id+"/"+id} onUploaded={async(path,file)=>{await save("application_files",{application_id:id,user_id:auth.session!.user.id,path,name:file.name,mime_type:file.type,size_bytes:file.size});q.reload()}}/>}</div>}
+ {(tab==="chat"||tab==="internal")&&app!.status!=="draft"&&<div className="panel"><h2>{tab==="internal"?"Внутрішні нотатки — користувач їх не бачить":"Повідомлення користувачу"}</h2>{q.data.messages.filter(m=>!!m.internal===(tab==="internal")).map(m=><div key={m.id} className={"message "+(m.internal?"internal":m.user_id===auth.session?.user.id?"own":"")}><small>{m.internal?"Внутрішня нотатка":m.user_id===app!.user_id?"Користувач":"Працівник"} · {datetime(m.created_at)}</small><p className="pre-wrap">{m.message}</p>{(m.file_ids||[]).map((fid:string)=>{const f=q.data!.files.find(f=>f.id===fid);return f?<FileLink key={fid} bucket="application-files" path={f.path} name={f.name}/>:null})}</div>)}{!q.data.messages.some(m=>!!m.internal===(tab==="internal"))&&<p>Повідомлень ще немає.</p>}{(!staff||canProcess)&&<form onSubmit={e=>{e.preventDefault();void run(async()=>{await save("application_messages",{application_id:id,user_id:auth.session!.user.id,message,internal:tab==="internal",file_ids:tab==="internal"?[]:attachmentIds});setMessage("");setAttachmentIds([])})}}><label>{tab==="internal"?"Текст внутрішньої нотатки":"Повідомлення користувачу / оператору"}<textarea value={message} onChange={e=>setMessage(e.target.value)} required maxLength={10000}/></label>{tab==="chat"&&<><FileUpload bucket="application-files" prefix={auth.session!.user.id+"/"+id} onUploaded={async(path,file)=>{const f=await save("application_files",{application_id:id,user_id:auth.session!.user.id,path,name:file.name,mime_type:file.type,size_bytes:file.size});setAttachmentIds(v=>[...v,f.id]);q.reload()}}/>{attachmentIds.length>0&&<p>Додано вкладень: {attachmentIds.length}</p>}</>}<Button busy={busy}>{tab==="internal"?"Зберегти внутрішню нотатку":"Надіслати повідомлення"}</Button></form>}</div>}
+ {tab==="history"&&<div className="panel"><h2>Історія</h2><ol className="timeline">{q.data.history.map(h=><li key={h.id}><b>{statuses[h.new_status]||h.new_status}</b><small>{datetime(h.created_at)}</small><p>{h.note}</p></li>)}{q.data.transfers.map(h=><li key={h.id}><b>Передано: {q.data!.deps.find(d=>d.id===h.old_department)?.name||"Попередній департамент"} → {q.data!.deps.find(d=>d.id===h.new_department)?.name||"Новий департамент"}</b><small>{datetime(h.created_at)}</small><p>{h.reason}</p></li>)}</ol></div>}
+ </div><aside><div className="panel"><h3>Відомості</h3><p>{q.data.deps.find(d=>d.id===app!.department_id)?.name||"Департамент не вказано"}</p><small>Оновлено: {datetime(app!.updated_at)}</small><Deadline value={app!.deadline}/></div>{canProcess&&app!.status!=="draft"&&<form className="panel" onSubmit={e=>{e.preventDefault();void run(async()=>{await rpc("change_application",{p_id:id,p_status:target,p_note:note,p_assignee:assignee||null});await rpc("set_application_metadata",{p_id:id,p_priority:priority,p_deadline:deadline?new Date(deadline+"Z").toISOString():null});setNote("")})}}><h2>Опрацювання</h2><label>Статус<select value={target} onChange={e=>setTarget(e.target.value)}>{[app!.status,...(transitions[app!.status]||[])].map(s=><option key={s} value={s}>{statuses[s]}</option>)}</select></label><label>Знайти працівника<input placeholder="Ім’я або прізвище" value={assigneeSearch} onChange={e=>setAssigneeSearch(e.target.value)}/></label><label>Відповідальний<select value={assignee} onChange={e=>setAssignee(e.target.value)}><option value="">Не призначено</option>{q.data.assignees.filter((s:any)=>s.user_id===assignee||s.name.toLowerCase().includes(assigneeSearch.toLowerCase())).map((s:any)=><option key={s.user_id} value={s.user_id}>{s.name||"Працівник"}</option>)}</select></label><label>Пріоритет<select aria-label="Пріоритет" value={priority} onChange={e=>setPriority(e.target.value)}>{Object.entries(priorities).map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label><label>Очікуваний термін (UTC)<input type="datetime-local" value={deadline} onChange={e=>setDeadline(e.target.value)}/></label><label>Повідомлення заявнику<textarea value={note} onChange={e=>setNote(e.target.value)}/></label><Button busy={busy}>Зберегти</Button><Button type="button" className="secondary" onClick={()=>setTransfer(true)}>Передати департаменту</Button></form>}{!staff&&["draft","submitted","received","needs_more_info"].includes(app!.status)&&<Button className="secondary" busy={busy} onClick={()=>{if(confirm("Скасувати цю заяву?"))void run(()=>rpc("cancel_application",{p_id:id}))}}>Скасувати заяву</Button>}</aside></div>
+ {transfer&&<Modal title="Передати заяву іншому департаменту" onClose={()=>setTransfer(false)}><p>Зараз: {q.data.deps.find(d=>d.id===app!.department_id)?.name}</p><form onSubmit={e=>{e.preventDefault();void run(async()=>{await rpc("transfer_application",{p_id:id,p_department:department,p_reason:reason});setTransfer(false)})}}><label>Новий департамент<select required value={department} onChange={e=>setDepartment(e.target.value)}><option value="">Виберіть</option>{q.data.deps.filter(d=>d.active&&d.id!==app!.department_id).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label>Причина<textarea required minLength={3} value={reason} onChange={e=>setReason(e.target.value)}/></label><Button busy={busy}>Підтвердити передачу</Button></form></Modal>}
+ </>}</State>
 }
 export function Appeals() {
   const auth = useAuth(),
@@ -835,6 +573,7 @@ export function AppealDetail() {
         <>
           <h1>{q.data.appeal.number}</h1>
           <Badge value={q.data.appeal.status} />
+          {(!staff||a.roles.some(r=>["admin","super_admin"].includes(r)))&&<ApplicationQR id={q.data.appeal.id} kind="appeal"/>}
           <div className="detail-grid">
             <div className="panel">
               <h2>{q.data.appeal.title}</h2>

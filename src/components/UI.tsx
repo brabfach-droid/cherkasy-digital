@@ -12,7 +12,7 @@ import {
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { errorText } from "../services/data";
-import { fileUrl, upload } from "../services/files";
+import { fileUrl, upload, validateFile, deleteObject } from "../services/files";
 import type { Row } from "../config/types";
 import { statuses } from "../config/types";
 export function Button({
@@ -143,6 +143,7 @@ export function SearchBar({
     />
   );
 }
+function eventRelative(value:string){const now=new Date().toLocaleDateString("en-CA",{timeZone:"Europe/Kyiv"}),day=new Date(value).toLocaleDateString("en-CA",{timeZone:"Europe/Kyiv"}),diff=Math.round((Date.parse(day)-Date.parse(now))/86400000);return diff===0?"Сьогодні":diff===1?"Завтра":diff>1?"Через "+diff+" дн.":"Подія завершилась"}
 export function Card({
   row,
   to,
@@ -158,6 +159,8 @@ export function Card({
         <span className="eyebrow">{subtitle || "Міський портал"}</span>
         <ArrowUpRight size={20} />
       </div>
+      {row.cover_path&&<Media bucket={to.startsWith("/events")?"events":"news"} path={row.cover_path} alt={row.title}/>}
+      {row.starts_at&&<div className="event-date"><strong>{new Date(row.starts_at).toLocaleDateString("uk-UA",{day:"numeric",timeZone:"Europe/Kyiv"})}</strong><span>{new Date(row.starts_at).toLocaleDateString("uk-UA",{month:"short",timeZone:"Europe/Kyiv"})}</span><small>{eventRelative(row.starts_at)}</small></div>}
       {row.is_demo && <Badge value="Демо" />}
       <h3>{row.title || row.name}</h3>
       <p>{row.summary || row.description}</p>
@@ -300,64 +303,14 @@ export function Modal({
     </motion.div>
   );
 }
-export function FileUpload({
-  bucket,
-  prefix,
-  onUploaded,
-  kind = "file",
-}: {
-  bucket: string;
-  prefix: string;
-  onUploaded: (path: string, file: File) => Promise<void> | void;
-  kind?: string;
-}) {
-  const [progress, setProgress] = useState<number | null>(null);
-  const toast = useToast();
-  const [fileError, setFileError] = useState("");
-  return (
-    <div className="file-upload">
-      <label>
-        <FileUp size={18} /> Додати{" "}
-        {kind === "pdf" ? "PDF" : kind === "image" ? "зображення" : "файл"}
-        <input
-          type="file"
-          disabled={progress !== null}
-          accept={
-            kind === "pdf"
-              ? ".pdf"
-              : kind === "image"
-                ? ".jpg,.jpeg,.png,.webp"
-                : ".pdf,.docx,.jpg,.jpeg,.png,.webp,.ico"
-          }
-          onChange={async (e) => {
-            const f = e.target.files?.[0];
-            if (!f) return;
-            setFileError("");
-            setProgress(0);
-            try {
-              const p = await upload(bucket, prefix, f, setProgress, kind);
-              await onUploaded(p, f);
-              toast("Файл завантажено");
-            } catch (err) {
-              setFileError(errorText(err));
-            } finally {
-              setProgress(null);
-              e.target.value = "";
-            }
-          }}
-        />
-      </label>
-      {progress !== null && (
-        <progress value={progress} max="100" aria-label="Завантаження файлу" />
-      )}
-      {fileError && (
-        <p role="alert" className="field-error">
-          {fileError}
-        </p>
-      )}
-      <small>До 10 МБ. PDF, DOCX, JPG, PNG, WEBP.</small>
-    </div>
-  );
+type StagedFile={key:string;file:File;url:string;progress:number;state:"ready"|"uploading"|"done"|"error";error:string};
+export function FileUpload({bucket,prefix,onUploaded,kind="file",multiple=true,maxFiles=10}:{bucket:string;prefix:string;onUploaded:(path:string,file:File)=>Promise<void>|void;kind?:string;multiple?:boolean;maxFiles?:number}){
+ const [items,setItems]=useState<StagedFile[]>([]),[drag,setDrag]=useState(false),[error,setError]=useState("");const refs=useRef<string[]>([]),toast=useToast();const busy=items.some(v=>v.state==="uploading");const limit=multiple?Math.min(20,Math.max(1,maxFiles)):1;
+ useEffect(()=>()=>refs.current.forEach(v=>URL.revokeObjectURL(v)),[]);
+ function stage(files:File[]){setError("");const pending=items.filter(v=>v.state!=="done");if(pending.length+files.length>limit){setError("Дозволено до "+limit+" файлів за раз");return}const added:StagedFile[]=[];for(const file of files){try{const ext=validateFile(file,kind);if(ext==="ico"&&bucket!=="site-assets")throw new Error("ICO дозволено лише для favicon.");const url=URL.createObjectURL(file);refs.current.push(url);added.push({key:crypto.randomUUID(),file,url,progress:0,state:"ready",error:""})}catch(e){setError(errorText(e))}}setItems(v=>[...v.filter(x=>x.state!=="done"),...added])}
+ const patch=(key:string,value:Partial<StagedFile>)=>setItems(v=>v.map(x=>x.key===key?{...x,...value}:x));
+ async function send(){for(const item of items.filter(v=>["ready","error"].includes(v.state))){let path="";patch(item.key,{state:"uploading",progress:0,error:""});try{path=await upload(bucket,prefix,item.file,n=>patch(item.key,{progress:n}),kind);await onUploaded(path,item.file);patch(item.key,{state:"done",progress:100});toast("Файл завантажено")}catch(e){if(path)await deleteObject(bucket,path).catch(()=>{});patch(item.key,{state:"error",error:errorText(e)})}}}
+ return <div className={"file-upload staged "+(drag?"drag-over":"")} onDragOver={e=>{e.preventDefault();if(!busy)setDrag(true)}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);if(!busy)stage(Array.from(e.dataTransfer.files))}}><label><FileUp size={22}/> Вибрати файли або перетягнути сюди<input type="file" disabled={busy} multiple={multiple} accept={kind==="pdf"?".pdf":kind==="image"?".jpg,.jpeg,.png,.webp":".pdf,.docx,.jpg,.jpeg,.png,.webp"+(bucket==="site-assets"?",.ico":"")} onChange={e=>{stage(Array.from(e.target.files||[]));e.target.value=""}}/></label>{kind!=="pdf"&&<label className="camera-picker">Зробити фото<input type="file" accept="image/*" capture="environment" disabled={busy} onChange={e=>{stage(Array.from(e.target.files||[]));e.target.value=""}}/></label>}<small>До 10 МБ · PDF, DOCX, JPG, PNG, WEBP · Спочатку виберіть, потім натисніть «Завантажити».</small>{items.map((v,i)=><div key={v.key} className="staged-file" draggable={!busy&&v.state==="ready"} onDragStart={e=>e.dataTransfer.setData("text/plain",String(i))} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();e.stopPropagation();if(busy)return;const from=Number(e.dataTransfer.getData("text/plain"));if(!Number.isInteger(from)||from<0||from>=items.length)return;setItems(arr=>{const copy=[...arr];copy.splice(i,0,copy.splice(from,1)[0]);return copy})}}>{v.file.type.startsWith("image/")?<img src={v.url} alt={v.file.name}/>:<FileUp size={24}/>}<div><strong>{v.file.name}</strong><small>{Math.ceil(v.file.size/1024)} КБ · {v.state==="done"?"Завантажено ✓":v.state==="uploading"?v.progress+"%":v.state==="error"?"Помилка":"Готовий до завантаження"}</small>{v.file.type==="application/pdf"&&<a href={v.url} target="_blank" rel="noreferrer">Переглянути PDF</a>}{v.state==="uploading"&&<progress max={100} value={v.progress}/>} {v.error&&<p role="alert" className="field-error">{v.error}</p>}</div>{!busy&&<Button type="button" className="ghost small" onClick={()=>setItems(a=>a.filter(x=>x.key!==v.key))}>Прибрати</Button>}</div>)}{items.some(v=>["ready","error"].includes(v.state))&&<Button type="button" busy={busy} onClick={()=>void send()}>Завантажити</Button>}{error&&<p className="field-error" role="alert">{error}</p>}</div>
 }
 export function FileLink({
   bucket,

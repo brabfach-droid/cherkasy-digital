@@ -90,7 +90,7 @@ textarea {
   border: 1px solid #b9c9c2;
   border-radius: 10px;
   padding: 12px 14px;
-  background: white;
+  background: var(--surface, white);
   color: var(--ink);
   min-height: 46px;
 }
@@ -142,7 +142,7 @@ pre {
 }
 details {
   border: 1px solid var(--line);
-  background: white;
+  background: var(--surface, white);
   border-radius: 12px;
   padding: 18px;
   margin: 12px 0;
@@ -180,7 +180,7 @@ details .prose {
   text-decoration: none;
 }
 .button.secondary {
-  background: white;
+  background: var(--surface, white);
   border-color: #bdd1c8;
   color: var(--primary);
 }
@@ -281,7 +281,7 @@ details .prose {
   white-space: nowrap;
 }
 .site-header {
-  background: white;
+  background: var(--surface, white);
   padding: 22px 36px;
   display: flex;
   align-items: center;
@@ -367,7 +367,7 @@ details .prose {
   z-index: 30;
   top: 40px;
   right: 0;
-  background: white;
+  background: var(--surface, white);
   min-width: 200px;
   box-shadow: 0 10px 40px #0002;
   border: 1px solid var(--line);
@@ -409,7 +409,7 @@ details .prose {
   max-width: 450px;
 }
 .hero-search {
-  background: white;
+  background: var(--surface, white);
   border: 1px solid var(--line);
   padding: 7px 7px 7px 18px;
   border-radius: 12px;
@@ -515,7 +515,7 @@ details .prose {
   display: flex;
   align-items: center;
   gap: 9px;
-  background: white;
+  background: var(--surface, white);
   border-radius: 10px;
   padding: 12px 16px;
   font-size: 11px;
@@ -544,7 +544,7 @@ details .prose {
 .card {
   display: flex;
   flex-direction: column;
-  background: white;
+  background: var(--surface, white);
   padding: 28px;
   border-radius: 16px;
   border: 1px solid var(--line);
@@ -595,7 +595,7 @@ details .prose {
 }
 .category {
   padding: 25px 20px;
-  background: white;
+  background: var(--surface, white);
   border: 1px solid var(--line);
   border-radius: 14px;
   color: var(--ink);
@@ -626,7 +626,7 @@ details .prose {
 .status-card {
   border-radius: 16px;
   padding: 26px;
-  background: white;
+  background: var(--surface, white);
   border: 1px solid var(--line);
 }
 .status-card.normal {
@@ -732,7 +732,7 @@ details .prose {
   flex: 0;
 }
 .panel {
-  background: white;
+  background: var(--surface, white);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 28px;
@@ -813,7 +813,7 @@ details .prose {
 }
 .calendar-grid > div {
   min-height: 100px;
-  background: white;
+  background: var(--surface, white);
   border: 1px solid var(--line);
   padding: 10px;
 }
@@ -848,7 +848,7 @@ details .prose {
   font-size: 12px;
 }
 .workspace aside nav a.active {
-  background: white;
+  background: var(--surface, white);
   color: var(--primary);
   box-shadow: 0 2px 8px #123b2405;
 }
@@ -867,7 +867,7 @@ details .prose {
 }
 .stat {
   padding: 25px;
-  background: white;
+  background: var(--surface, white);
   border: 1px solid var(--line);
   border-radius: 14px;
   display: flex;
@@ -884,7 +884,7 @@ details .prose {
 }
 .list-item {
   display: block;
-  background: white;
+  background: var(--surface, white);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 18px 22px;
@@ -904,7 +904,7 @@ details .prose {
 }
 .table-wrap {
   overflow-x: auto;
-  background: white;
+  background: var(--surface, white);
   border: 1px solid var(--line);
   border-radius: 12px;
 }
@@ -1050,7 +1050,7 @@ td .button {
 .empty {
   text-align: center;
   padding: 50px 25px;
-  background: white;
+  background: var(--surface, white);
   border: 1px solid var(--line);
   border-radius: 14px;
   color: var(--muted);
@@ -1139,7 +1139,7 @@ td .button {
   grid-template-columns: 1fr 1fr;
   max-width: 1100px;
   margin: 70px auto 100px;
-  background: white;
+  background: var(--surface, white);
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -1194,7 +1194,7 @@ td .button {
   font-size: 13px;
 }
 footer {
-  background: white;
+  background: var(--surface, white);
   border-top: 1px solid var(--line);
   padding: 55px 60px 20px;
 }
@@ -1241,7 +1241,7 @@ footer {
   left: 20px;
   top: -100px;
   z-index: 200;
-  background: white;
+  background: var(--surface, white);
   padding: 15px;
 }
 .skip-link:focus {
@@ -1306,7 +1306,7 @@ footer {
     left: 0;
     right: 0;
     top: 84px;
-    background: white;
+    background: var(--surface, white);
     padding: 25px;
     z-index: 50;
     box-shadow: 0 18px 30px #0001;
@@ -1608,7 +1608,7 @@ footer {
   }
   tr {
     margin-bottom: 15px;
-    background: white;
+    background: var(--surface, white);
     border: 1px solid var(--line);
     border-radius: 12px;
     padding: 10px;
@@ -1902,7 +1902,7 @@ tbody tr,
   padding: 7px;
 }
 .global-announcement.critical .button {
-  background: white;
+  background: var(--surface, white);
   color: #8d251e;
 }
 .app-version {
@@ -1989,7 +1989,7 @@ tbody tr,
   width: 180px;
   height: 180px;
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface, #fff);
 }
 .qr a {
   font-size: 11px;
@@ -2182,7 +2182,7 @@ tbody tr,
   border: 1px solid var(--line);
   border-radius: 12px;
   margin: 10px 0;
-  background: white;
+  background: var(--surface, white);
 }
 .accordion-title {
   width: 100%;

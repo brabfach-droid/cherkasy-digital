@@ -1,3 +1,4 @@
+import {Deadline,priorities} from "../components/V3";
 import { DisplaySettings } from "../components/DisplaySettings";
 import { RevisionHistory } from "./V2Pages";
 import { useEffect, useState } from "react";
@@ -103,7 +104,7 @@ export function StaffList({ kindName }: { kindName?: string } = {}) {
     [dep, setDep] = useState(""),
     [service, setService] = useState(""),
     [assignee, setAssignee] = useState(""),
-    [sort, setSort] = useState("created_at");
+    [sort, setSort] = useState("created_at"), [priority,setPriority]=useState("");
   const d = useDebounce(search),
     q = useData(
       () =>
@@ -121,16 +122,17 @@ export function StaffList({ kindName }: { kindName?: string } = {}) {
               ? { service_id: service }
               : {}),
             ...(assignee ? { assignee_id: assignee } : {}),
+            ...(priority&&table==="applications"?{priority}:{}),
           },
         }),
-      [table, page, d, status, dep, service, assignee, sort],
+      [table, page, d, status, dep, service, assignee, sort,priority],
     );
   const refs = useData(async () => {
-    const [deps, services] = await Promise.all([
+    const [deps, services,staff] = await Promise.all([
       list("departments", { size: 100 }),
-      list("services", { size: 1000 }),
+      list("services", { size: 1000 }),rpc("staff_directory"),
     ]);
-    return { deps: deps.rows, services: services.rows };
+    return { deps: deps.rows, services: services.rows,staff };
   });
   const base = window.location.pathname.startsWith("/admin")
     ? "admin"
@@ -214,12 +216,8 @@ export function StaffList({ kindName }: { kindName?: string } = {}) {
             ))}
           </select>
         )}
-        <input
-          aria-label="UUID відповідального"
-          placeholder="UUID відповідального"
-          value={assignee}
-          onChange={(e) => setAssignee(e.target.value)}
-        />
+        <select aria-label="Відповідальний" value={assignee} onChange={e=>setAssignee(e.target.value)}><option value="">Усі працівники</option>{refs.data?.staff.map((s:any)=><option key={s.user_id} value={s.user_id}>{s.name||"Працівник"}</option>)}</select>
+        {table==="applications"&&<select aria-label="Пріоритет" value={priority} onChange={e=>{setPriority(e.target.value);setPage(1)}}><option value="">Усі пріоритети</option>{Object.entries(priorities).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>}
         <select
           aria-label="Сортування"
           value={sort}
@@ -262,7 +260,8 @@ export function StaffList({ kindName }: { kindName?: string } = {}) {
                     <Badge value={r.status} />
                   </td>
                   <td data-label="Відповідальний">
-                    {r.assignee_id || "Не призначено"}
+                    {refs.data?.staff.find((s:any)=>s.user_id===r.assignee_id)?.name||"Не призначено"}
+                    {table==="applications"&&<><small>{priorities[r.priority||"normal"]}</small><Deadline value={r.deadline}/></>}
                   </td>
                 </tr>
               ))}
@@ -1060,6 +1059,7 @@ export function FormBuilder() {
                   />
                 </label>
               )}
+              {["file","pdf","image"].includes(f.type)&&<><label className="check"><input type="checkbox" checked={!!f.validation.multiple} onChange={e=>change(i,"validation",{...f.validation,multiple:e.target.checked})}/>Декілька файлів</label>{f.validation.multiple&&<label>Максимум файлів<input type="number" min={1} max={20} value={f.validation.maxFiles||10} onChange={e=>change(i,"validation",{...f.validation,maxFiles:Math.max(1,Math.min(20,Number(e.target.value)))})}/></label>}</>}
               {f.type === "date" && (
                 <label className="check">
                   <input
