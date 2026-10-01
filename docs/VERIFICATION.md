@@ -33,3 +33,9 @@ Version 2.0.0: TypeScript/Vite production build and 5 logic tests passed. All SQ
 Public browser route checks (320,375,768,1024,1440) and resident/staff/admin fixture tests passed including /account/activity, important announcements and verification admin pages. Dedicated production V2 browser test passed: banner moves header, dismiss persists, version reopens, critical non-dismiss, notification popover, /display critical screen, generated document QR PNG, reduced-motion, manifest subpath, service worker static allowlist, actual offline navigation fallback. Visually inspected mobile announcement and 1920×1080 display screenshots.
 
 These do not replace checks against the user's hosted Supabase, SMTP, cron or real alerts token. Install prompts depend on browser platform and installability heuristics; service-worker/manifest/offline behavior was tested in Chromium.
+
+## Перевірка 2.1.0 — 01.10.2026
+
+TypeScript і production build успішні. Публічні маршрути перевірені на 320, 375, 768, 1024 та 1440 px; authenticated fixture тести та V2/PWA регресійний тест пройшли. Окремий браузерний тест перевіряє видимість тривоги на mobile, панель деталей, пріоритет над maintenance, зупинку ротації, 8-секундний відбій, невідомий стан при мережевій помилці/застарілому кеші, critical, ротацію, reduced motion і один спільний запит кешу під час оновлення. Desktop/mobile screenshots та табло 1920 px переглянуті візуально.
+
+UI сценарії використовують перехоплені тестові відповіді, без записів до реальної бази. Hosted Supabase, cron і реальний токен alerts.in.ua залишаються неперевіреними.

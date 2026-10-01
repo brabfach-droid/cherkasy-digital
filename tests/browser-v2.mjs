@@ -61,6 +61,7 @@ await page.screenshot({
   path: "test-results/v2-banner-mobile.png",
   fullPage: true,
 });
+await page.setViewportSize({width:1440,height:900});
 await page.getByRole("button", { name: /Сповіщення:/ }).click();
 await page.getByText("Усі сповіщення →").waitFor();
 await page.keyboard.press("Escape");

@@ -1,6 +1,6 @@
 {
   "name": "cherkasy-digital",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,7 +12,8 @@
     "sitemap": "node scripts/sitemap.mjs",
     "test:ui": "node tests/browser.mjs",
     "test:ui:authenticated": "node tests/browser-authenticated.mjs",
-    "test:ui:v2": "node tests/browser-v2.mjs"
+    "test:ui:v2": "node tests/browser-v2.mjs",
+    "test:ui:live": "node tests/browser-live.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
