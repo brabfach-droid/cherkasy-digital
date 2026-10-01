@@ -1,0 +1,7 @@
+const CACHE="cherkasy-static-v2-cherkasydigital-1790838926972",FILES=["/cherkasy-digital/offline.html","/cherkasy-digital/logo.svg","/cherkasy-digital/icons/icon-192.png","/cherkasy-digital/icons/icon-512.png","/cherkasy-digital/assets/index-DBbqp9Sc.css","/cherkasy-digital/assets/index-D7R9XgCs.js","/cherkasy-digital/assets/AuthPages-eXJpBWzp.js","/cherkasy-digital/assets/Account-Kri_yymJ.js","/cherkasy-digital/assets/Applications-wtfGiAs2.js","/cherkasy-digital/assets/Admin-DIsKEGzY.js","/cherkasy-digital/assets/V2Pages-DBYbRizU.js","/cherkasy-digital/assets/PublicPages-DFfcIALv.js","/cherkasy-digital/assets/DynamicForm-C8dE5T5e.js"],BASE="/cherkasy-digital/";
+self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES))));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('cherkasy-static-v2-'+BASE.replace(/\W/g,'')+'-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==self.location.origin||e.request.headers.has('Authorization'))return;
+if(e.request.mode==='navigate'){e.respondWith(fetch(e.request).catch(()=>caches.match(BASE+'offline.html')));return;}
+if(FILES.includes(u.pathname)&&!u.search){e.respondWith(caches.match(u.pathname).then(r=>r||fetch(e.request)));}
+});

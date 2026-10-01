@@ -1,3 +1,5 @@
+import { MotionConfig } from "motion/react";
+import { PageOutlet } from "./components/V2";
 import { lazy, Suspense, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
@@ -11,6 +13,12 @@ import {
   accountLinks,
 } from "./layouts/Layouts";
 import "./styles/global.css";
+const Display = lazy(() =>
+  import("./pages/V2Pages").then((m) => ({ default: m.Display })),
+);
+const StatusPage = lazy(() =>
+  import("./pages/V2Pages").then((m) => ({ default: m.StatusPage })),
+);
 const Public = lazy(() =>
     import("./pages/PublicPages").then((m) => ({ default: m.Home })),
   ),
@@ -134,6 +142,8 @@ function App() {
           ["service-categories", "Категорії послуг"],
           ["appeal-categories", "Категорії звернень"],
           ["announcements", "Оголошення"],
+          ["important-announcements", "Важливі оголошення"],
+          ["verifications", "Підтвердження акаунтів"],
           ["city", "Черкаси зараз"],
           ["users", "Користувачі / Staff / Ролі"],
           ["departments", "Департаменти"],
@@ -195,85 +205,94 @@ function App() {
         }
       >
         <Routes>
+          <Route path="display" element={<Display />} />
           <Route element={<PublicLayout />}>
-            <Route index element={<Public />} />
-            {["services", "news", "documents", "events"].map((t) => (
-              <Route key={t} path={t}>
-                <Route index element={<Catalog />} />
-                <Route path=":slug" element={<Detail />} />
+            <Route element={<PageOutlet />}>
+              <Route path="status/:token" element={<StatusPage />} />
+              <Route index element={<Public />} />
+              {["services", "news", "documents", "events"].map((t) => (
+                <Route key={t} path={t}>
+                  <Route index element={<Catalog />} />
+                  <Route path=":slug" element={<Detail />} />
+                </Route>
+              ))}
+              <Route path="now" element={<Now />} />
+              <Route path="search" element={<Search />} />
+              <Route path="help" element={<Help />} />
+              <Route path="appeals" element={<Appeals />} />
+              {["privacy", "terms", "accessibility"].map((t) => (
+                <Route key={t} path={t} element={<Info />} />
+              ))}
+              <Route path="auth/:mode" element={<Auth />} />
+              <Route element={<Guard />}>
+                <Route path="services/:slug/apply" element={<Apply />} />
+                <Route
+                  path="account"
+                  element={<Workspace kind="account" links={accountLinks} />}
+                >
+                  <Route index element={<Account />} />
+                  <Route path=":section" element={<Account />} />
+                  <Route path="applications/:id" element={<AppDetail />} />
+                  <Route path="appeals/:id" element={<AppealDetail />} />
+                </Route>
               </Route>
-            ))}
-            <Route path="now" element={<Now />} />
-            <Route path="search" element={<Search />} />
-            <Route path="help" element={<Help />} />
-            <Route path="appeals" element={<Appeals />} />
-            {["privacy", "terms", "accessibility"].map((t) => (
-              <Route key={t} path={t} element={<Info />} />
-            ))}
-            <Route path="auth/:mode" element={<Auth />} />
-            <Route element={<Guard />}>
-              <Route path="services/:slug/apply" element={<Apply />} />
               <Route
-                path="account"
-                element={<Workspace kind="account" links={accountLinks} />}
+                element={
+                  <Guard
+                    roles={[
+                      "super_admin",
+                      "admin",
+                      "department_admin",
+                      "operator",
+                      "editor",
+                      "appeals_operator",
+                      "viewer",
+                    ]}
+                  />
+                }
               >
-                <Route index element={<Account />} />
-                <Route path=":section" element={<Account />} />
-                <Route path="applications/:id" element={<AppDetail />} />
-                <Route path="appeals/:id" element={<AppealDetail />} />
+                <Route
+                  path="staff"
+                  element={<Workspace kind="staff" links={staffLinks} />}
+                >
+                  <Route index element={<Dashboard />} />
+                  <Route path=":kind" element={<StaffList />} />
+                  <Route path="applications/:id" element={<AppDetail />} />
+                  <Route path="appeals/:id" element={<AppealDetail />} />
+                  <Route path="city" element={<CrudCity />} />
+                </Route>
               </Route>
-            </Route>
-            <Route
-              element={
-                <Guard
-                  roles={[
-                    "super_admin",
-                    "admin",
-                    "department_admin",
-                    "operator",
-                    "editor",
-                    "appeals_operator",
-                    "viewer",
-                  ]}
-                />
-              }
-            >
               <Route
-                path="staff"
-                element={<Workspace kind="staff" links={staffLinks} />}
+                element={
+                  <Guard
+                    roles={[
+                      "super_admin",
+                      "admin",
+                      "department_admin",
+                      "editor",
+                    ]}
+                  />
+                }
               >
-                <Route index element={<Dashboard />} />
-                <Route path=":kind" element={<StaffList />} />
-                <Route path="applications/:id" element={<AppDetail />} />
-                <Route path="appeals/:id" element={<AppealDetail />} />
-                <Route path="city" element={<CrudCity />} />
+                <Route
+                  path="admin"
+                  element={<Workspace kind="admin" links={adminLinks} />}
+                >
+                  <Route index element={<Dashboard />} />
+                  <Route path="forms" element={<Builder />} />
+                  <Route path="users" element={<Users />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="audit" element={<Audit />} />
+                  <Route path="files" element={<Files />} />
+                  <Route path="applications" element={<ListApplications />} />
+                  <Route path="appeals" element={<ListAppeals />} />
+                  <Route path="applications/:id" element={<AppDetail />} />
+                  <Route path="appeals/:id" element={<AppealDetail />} />
+                  <Route path=":resource" element={<Crud />} />
+                </Route>
               </Route>
+              <Route path="*" element={<NotFound />} />
             </Route>
-            <Route
-              element={
-                <Guard
-                  roles={["super_admin", "admin", "department_admin", "editor"]}
-                />
-              }
-            >
-              <Route
-                path="admin"
-                element={<Workspace kind="admin" links={adminLinks} />}
-              >
-                <Route index element={<Dashboard />} />
-                <Route path="forms" element={<Builder />} />
-                <Route path="users" element={<Users />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="audit" element={<Audit />} />
-                <Route path="files" element={<Files />} />
-                <Route path="applications" element={<ListApplications />} />
-                <Route path="appeals" element={<ListAppeals />} />
-                <Route path="applications/:id" element={<AppDetail />} />
-                <Route path="appeals/:id" element={<AppealDetail />} />
-                <Route path=":resource" element={<Crud />} />
-              </Route>
-            </Route>
-            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </Suspense>
@@ -300,12 +319,24 @@ if (redirect) {
 }
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-    <ToastProvider>
-      <AuthProvider>
-        <SettingsProvider>
-          <App />
-        </SettingsProvider>
-      </AuthProvider>
-    </ToastProvider>
+    <MotionConfig reducedMotion="user">
+      <ToastProvider>
+        <AuthProvider>
+          <SettingsProvider>
+            <App />
+          </SettingsProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </MotionConfig>
   </BrowserRouter>,
 );
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register(import.meta.env.BASE_URL + "sw.js", {
+        scope: import.meta.env.BASE_URL,
+      })
+      .catch(() => {});
+  });
+}

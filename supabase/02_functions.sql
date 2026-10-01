@@ -71,12 +71,16 @@ create or replace function public.submit_application(p_id uuid) returns text lan
  if not exists(select 1 from services where id=a.service_id and format<>'offline' and available and public.content_visible(status,published_at,deleted_at)) then raise exception 'Послуга недоступна';end if;
  for f in select value from jsonb_array_elements(a.form_snapshot) loop
  k=f->>'key';v=a.data->k;
+ if coalesce(f->'validation'->'showWhen'->>'field','')<>'' and (a.data->(f->'validation'->'showWhen'->>'field')) is distinct from f->'validation'->'showWhen'->'equals' then continue;end if;
  if (f->>'required')::boolean and f->>'type' not in ('heading','information') then
  if f->>'type' in ('file','image','pdf') then
  if not exists(select 1 from application_files where application_id=a.id and field_key=k) then raise exception 'Додайте файл: %',f->>'label';end if;
  elsif v is null or v='null'::jsonb or v='""'::jsonb or v='[]'::jsonb or (f->>'type' in ('checkbox','confirmation') and v<>'true'::jsonb) then raise exception 'Заповніть поле: %',f->>'label';end if;
  end if;
  if v is not null and v not in ('null'::jsonb,'""'::jsonb) then
+ if f->>'type'='phone' and (v#>>'{}') !~ '^\+?[0-9 ()-]{7,20}$' then raise exception 'Перевірте номер телефону';end if;
+ if f->>'type'='address' and length(trim(v#>>'{}'))<8 then raise exception 'Вкажіть повну адресу';end if;
+ if f->>'type'='date' and coalesce((f->'validation'->>'noFuture')::boolean,false) and (v#>>'{}')::date>current_date then raise exception 'Дата не може бути в майбутньому';end if;
  if f->>'type'='email' and (v#>>'{}') !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then raise exception 'Некоректний email';end if;
  if f->>'type' in ('select','radio') and not ((f->'options') @> jsonb_build_array(v#>>'{}')) then raise exception 'Невідома опція';end if;
  if f->>'type'='multiselect' and (jsonb_typeof(v)<>'array' or not ((f->'options') @> v)) then raise exception 'Невідомі опції';end if;

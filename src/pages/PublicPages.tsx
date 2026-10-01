@@ -1,3 +1,6 @@
+import { Accordion } from "../components/UI";
+import { QR } from "../components/V2";
+import { siteUrl } from "../services/client";
 import { useEffect, useState } from "react";
 import {
   Link,
@@ -187,7 +190,12 @@ export function Home() {
     announcements: (
       <>
         {q.data?.announcements.rows
-          .filter((r) => r.placement !== "modal" && !dismissed.includes(r.id))
+          .filter(
+            (r) =>
+              r.placement !== "modal" &&
+              r.placement !== "global" &&
+              !dismissed.includes(r.id),
+          )
           .map((r) => (
             <div className="announcement" key={r.id}>
               <div>
@@ -669,6 +677,12 @@ export function Detail() {
               </p>
               {q.data.is_demo && <Badge value="Демо" />}
               <h1>{q.data.title}</h1>
+              {table === "documents" && (
+                <QR
+                  value={siteUrl() + "documents/" + q.data.slug}
+                  label="QR публічного документа"
+                />
+              )}
               <p className="lead">{q.data.summary || q.data.description}</p>
             </div>
             {table === "services" ? (
@@ -689,10 +703,9 @@ export function Detail() {
                     </section>
                   ))}
                   {(q.data.faq || []).map((f: any, i: number) => (
-                    <details key={i}>
-                      <summary>{f.question}</summary>
+                    <Accordion key={i} title={f.question}>
                       <Markdown value={f.answer} />
-                    </details>
+                    </Accordion>
                   ))}
                 </article>
                 <aside className="panel sticky">
@@ -982,10 +995,9 @@ export function SearchPage() {
               <div className="grid two">
                 {g.rows.map((r) =>
                   g.table === "faqs" ? (
-                    <details key={r.id}>
-                      <summary>{r.question}</summary>
+                    <Accordion key={r.id} title={r.question}>
                       <Markdown value={r.answer} />
-                    </details>
+                    </Accordion>
                   ) : (
                     <Card
                       key={r.id}
@@ -1019,10 +1031,9 @@ export function Help() {
             {q.data?.rows
               .filter((r) => r.category === c)
               .map((r) => (
-                <details key={r.id}>
-                  <summary>{r.question}</summary>
+                <Accordion key={r.id} title={r.question}>
                   <Markdown value={r.answer} />
-                </details>
+                </Accordion>
               ))}
           </section>
         ))}

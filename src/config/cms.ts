@@ -148,7 +148,7 @@ export const resources: Record<string, Resource> = {
         key: "placement",
         label: "Відображення",
         type: "select",
-        options: ["banner", "modal", "pinned"],
+        options: ["banner", "modal", "pinned", "global"],
       },
       { key: "active", label: "Активне", type: "checkbox" },
       { key: "dismissible", label: "Дозволити закриття", type: "checkbox" },
@@ -251,3 +251,51 @@ for (const [key, table, title] of [
         : []),
     ],
   };
+
+resources["important-announcements"] = {
+  ...resources.announcements,
+  title: "Важливі оголошення",
+  fields: resources.announcements.fields
+    .filter((f) => f.key !== "placement")
+    .map((f) =>
+      f.key === "type"
+        ? {
+            ...f,
+            type: "select",
+            options: [
+              "info",
+              "warning",
+              "danger",
+              "critical",
+              "maintenance",
+              "service",
+            ],
+          }
+        : f,
+    )
+    .concat([
+      {
+        key: "version",
+        label: "Версія (збільште, щоб показати повідомлення повторно)",
+        type: "number",
+      },
+    ]),
+};
+resources.verifications = {
+  table: "account_verifications",
+  title: "Ручне підтвердження акаунтів",
+  fields: [
+    { key: "user_id", label: "UUID користувача", required: true },
+    {
+      key: "kind",
+      label: "Що перевірено",
+      type: "select",
+      options: ["phone", "identity", "address"],
+    },
+    {
+      key: "verified",
+      label: "Підтверджено після ручної перевірки",
+      type: "checkbox",
+    },
+  ],
+};

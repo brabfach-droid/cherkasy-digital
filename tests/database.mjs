@@ -12,6 +12,7 @@ for (let run = 0; run < 2; run++)
     "03_rls",
     "04_storage",
     "05_seed",
+    "08_v2",
   ]) {
     let sql = await readFile(
       new URL("../supabase/" + file + ".sql", import.meta.url),
@@ -300,5 +301,160 @@ await as("other", async () => {
 });
 console.log(
   "PASS: ownership, cross-department access, role isolation, transitions, immutable snapshots, required validation, audit, private storage, blocked users",
+);
+
+let publicToken;
+await as("resident", async () => {
+  publicToken = (
+    await db.query("select get_application_public_token($1) as token", [aid])
+  ).rows[0].token;
+  assert.equal(publicToken.length, 64);
+  assert.ok(
+    (await db.query("select * from user_activity")).rows.every(
+      (r) => r.user_id === users.resident,
+    ),
+  );
+  await assert.rejects(
+    db.query(
+      "insert into user_activity(user_id,title,kind) values($1,'fake','fake')",
+      [users.resident],
+    ),
+  );
+  await assert.rejects(
+    db.query(
+      "insert into account_verifications(user_id,kind,verified) values($1,'identity',true)",
+      [users.resident],
+    ),
+  );
+  const n = (await db.query("select id from notifications limit 1")).rows[0];
+  if (n) {
+    await db.query("select set_notification_read($1,true)", [n.id]);
+    assert.ok(
+      (await db.query("select read_at from notifications where id=$1", [n.id]))
+        .rows[0].read_at,
+    );
+    await db.query("select set_notification_read($1,false)", [n.id]);
+    assert.equal(
+      (await db.query("select read_at from notifications where id=$1", [n.id]))
+        .rows[0].read_at,
+      null,
+    );
+  }
+});
+await db.exec(
+  "set role anon;select set_config('request.jwt.claim.sub','',false)",
+);
+const publicRow = (
+  await db.query("select * from public_application_status($1)", [publicToken])
+).rows[0];
+assert.deepEqual(
+  Object.keys(publicRow).sort(),
+  ["number", "type", "status", "created_at", "updated_at"].sort(),
+);
+assert.equal(
+  (
+    await db.query("select * from public_application_status($1)", [
+      "x".repeat(64),
+    ])
+  ).rows.length,
+  0,
+);
+await assert.rejects(db.query("select * from application_public_tokens"));
+await db.exec("reset role");
+await as("outsider", async () => {
+  await assert.rejects(
+    db.query("select get_application_public_token($1)", [aid]),
+  );
+});
+await as("resident", async () => {
+  await db.query("select revoke_application_public_token($1)", [aid]);
+});
+assert.equal(
+  (await db.query("select * from public_application_status($1)", [publicToken]))
+    .rows.length,
+  0,
+);
+let rev;
+await as("admin", async () => {
+  await db.query("update services set summary='V2 test revision' where id=$1", [
+    service.id,
+  ]);
+  rev = (
+    await db.query(
+      "select * from content_revisions where entity_type='services' and entity_id=$1 order by version desc limit 1",
+      [service.id],
+    )
+  ).rows[0];
+  assert.ok(rev.changed_fields.includes("summary"));
+  await db.query("update services set summary='newer' where id=$1", [
+    service.id,
+  ]);
+  await db.query("select restore_content_revision($1)", [rev.id]);
+  assert.equal(
+    (await db.query("select summary from services where id=$1", [service.id]))
+      .rows[0].summary,
+    "V2 test revision",
+  );
+  assert.ok(
+    (await db.query("select * from audit_logs where action='RESTORE'")).rows
+      .length,
+  );
+});
+await as("resident", async () => {
+  assert.equal(
+    (await db.query("select * from content_revisions")).rows.length,
+    0,
+  );
+  await assert.rejects(
+    db.query("select restore_content_revision($1)", [rev.id]),
+  );
+});
+console.log(
+  "PASS V2: token scope/revocation, no public private fields, activity ownership, verification privilege protection, read/unread RPC, revisions and restore audit",
+);
+
+let conditionalId;
+await as("resident", async () => {
+  conditionalId = (
+    await db.query("select save_draft($1,'{}') as id", [service.id])
+  ).rows[0].id;
+});
+await db.query(
+  "update applications set form_snapshot=$2::jsonb,data=$3::jsonb where id=$1",
+  [
+    conditionalId,
+    JSON.stringify([
+      {
+        key: "when",
+        type: "date",
+        label: "Дата",
+        required: true,
+        validation: {
+          noFuture: true,
+          showWhen: { field: "needed", equals: true },
+        },
+        options: [],
+      },
+    ]),
+    JSON.stringify({ needed: true, when: "2999-01-01" }),
+  ],
+);
+await as("resident", async () => {
+  await assert.rejects(
+    db.query("select submit_application($1)", [conditionalId]),
+  );
+});
+await db.query(
+  "update applications set data='{\"needed\":false}'::jsonb where id=$1",
+  [conditionalId],
+);
+await as("resident", async () => {
+  assert.ok(
+    (await db.query("select submit_application($1)", [conditionalId])).rows[0]
+      .submit_application,
+  );
+});
+console.log(
+  "PASS V2: server future-date rejection and hidden required field rules",
 );
 await db.close();

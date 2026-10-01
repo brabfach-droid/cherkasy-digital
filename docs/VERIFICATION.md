@@ -25,3 +25,11 @@ npm run test:ui:authenticated
 Для Linux harness включено @sparticuz/chromium. На Windows/macOS можна використати звичайний Playwright Chromium: встановіть `npx playwright install chromium`, а в обох test scripts замініть запуск із `executablePath` та `Chromium.args` на `chromium.launch({headless:true})`. UI harness запускає тимчасовий Vite server сам; окремий dev server не потрібен.
 
 Не запускайте authenticated fixture test проти реального production: він призначений для локального test server і перехоплених API.
+
+## V2 verification
+
+Version 2.0.0: TypeScript/Vite production build and 5 logic tests passed. All SQL modules including 08_v2 execute twice in PGlite. Added real SQL assertions for public token limited columns, owner-only generation/revocation, activity RLS, denied self verification, read/unread RPC, revision snapshots, role-limited restore, restore audit, server future-date rejection and conditional required fields.
+
+Public browser route checks (320,375,768,1024,1440) and resident/staff/admin fixture tests passed including /account/activity, important announcements and verification admin pages. Dedicated production V2 browser test passed: banner moves header, dismiss persists, version reopens, critical non-dismiss, notification popover, /display critical screen, generated document QR PNG, reduced-motion, manifest subpath, service worker static allowlist, actual offline navigation fallback. Visually inspected mobile announcement and 1920×1080 display screenshots.
+
+These do not replace checks against the user's hosted Supabase, SMTP, cron or real alerts token. Install prompts depend on browser platform and installability heuristics; service-worker/manifest/offline behavior was tested in Chromium.

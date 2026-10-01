@@ -1,3 +1,5 @@
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { reveal, motionTokens } from "../config/motion";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -71,7 +73,15 @@ export function State({
         {error}
       </div>
     );
-  return <>{children}</>;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: motionTokens.normal }}
+    >
+      {children}
+    </motion.div>
+  );
 }
 export function Pagination({
   page,
@@ -175,17 +185,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
       <div className="toasts" aria-live="polite">
-        {items.map((x) => (
-          <div key={x.id} className={"toast " + x.kind}>
-            {x.text}
-            <button
-              aria-label="Закрити"
-              onClick={() => setItems((v) => v.filter((i) => i.id !== x.id))}
+        <AnimatePresence>
+          {items.map((x) => (
+            <motion.div
+              {...reveal}
+              layout
+              key={x.id}
+              className={"toast " + x.kind}
             >
-              <X size={16} />
-            </button>
-          </div>
-        ))}
+              {x.text}
+              <button
+                aria-label="Закрити"
+                onClick={() => setItems((v) => v.filter((i) => i.id !== x.id))}
+              >
+                <X size={16} />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );
@@ -200,6 +217,23 @@ export function Modal({
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [closing, setClosing] = useState(false);
+  const reduced = useReducedMotion();
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function close() {
+    if (closing) return;
+    setClosing(true);
+    timer.current = setTimeout(
+      onClose,
+      reduced ? 0 : motionTokens.normal * 1000,
+    );
+  }
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
   useEffect(() => {
     const prev = document.activeElement as HTMLElement;
     const old = document.body.style.overflow;
@@ -211,13 +245,25 @@ export function Modal({
     };
   }, []);
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: closing ? 0 : 1 }}
+      transition={{ duration: reduced ? 0 : motionTokens.normal }}
       className="modal-backdrop"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) close();
       }}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: reduced ? 1 : 0.98 }}
+        animate={{
+          opacity: closing ? 0 : 1,
+          scale: closing && !reduced ? 0.98 : 1,
+        }}
+        transition={{
+          duration: reduced ? 0 : motionTokens.normal,
+          ease: motionTokens.ease,
+        }}
         className="modal"
         ref={ref}
         tabIndex={-1}
@@ -225,7 +271,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         onKeyDown={(e) => {
-          if (e.key === "Escape") onClose();
+          if (e.key === "Escape") close();
           if (e.key === "Tab") {
             const els = ref.current?.querySelectorAll<HTMLElement>(
               'button,a,input,select,textarea,[tabindex="0"]',
@@ -245,13 +291,13 @@ export function Modal({
       >
         <div className="section-heading">
           <h2>{title}</h2>
-          <button aria-label="Закрити вікно" onClick={onClose}>
+          <button aria-label="Закрити вікно" onClick={close}>
             <X />
           </button>
         </div>
         {children}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 export function FileUpload({
@@ -267,6 +313,7 @@ export function FileUpload({
 }) {
   const [progress, setProgress] = useState<number | null>(null);
   const toast = useToast();
+  const [fileError, setFileError] = useState("");
   return (
     <div className="file-upload">
       <label>
@@ -285,13 +332,14 @@ export function FileUpload({
           onChange={async (e) => {
             const f = e.target.files?.[0];
             if (!f) return;
+            setFileError("");
             setProgress(0);
             try {
               const p = await upload(bucket, prefix, f, setProgress, kind);
               await onUploaded(p, f);
               toast("Файл завантажено");
             } catch (err) {
-              toast(errorText(err), "error");
+              setFileError(errorText(err));
             } finally {
               setProgress(null);
               e.target.value = "";
@@ -301,6 +349,11 @@ export function FileUpload({
       </label>
       {progress !== null && (
         <progress value={progress} max="100" aria-label="Завантаження файлу" />
+      )}
+      {fileError && (
+        <p role="alert" className="field-error">
+          {fileError}
+        </p>
       )}
       <small>До 10 МБ. PDF, DOCX, JPG, PNG, WEBP.</small>
     </div>
@@ -364,4 +417,111 @@ export function Media({
   return url ? (
     <img className="cover" src={url} alt={alt} loading="lazy" />
   ) : null;
+}
+export function Accordion({
+  title,
+  children,
+}: {
+  title: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false),
+    reduced = useReducedMotion();
+  return (
+    <section className="accordion">
+      <button
+        type="button"
+        className="accordion-title"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <span>{title}</span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: reduced ? 0 : motionTokens.normal }}
+        >
+          ⌄
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{
+              duration: reduced ? 0 : motionTokens.normal,
+              ease: motionTokens.ease,
+            }}
+            className="accordion-body"
+          >
+            <div>{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  );
+}
+export function Popover({
+  trigger,
+  children,
+  label,
+  className = "",
+}: {
+  trigger: React.ReactNode;
+  children: React.ReactNode;
+  label: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false),
+    ref = useRef<HTMLDivElement>(null),
+    reduced = useReducedMotion();
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  return (
+    <div ref={ref} className={"user-menu popover " + className}>
+      <button
+        aria-label={label}
+        aria-expanded={open}
+        className="popover-trigger icon-button"
+        onClick={() => setOpen(!open)}
+      >
+        {trigger}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: reduced ? 0 : 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: reduced ? 0 : 4 }}
+            transition={{
+              duration: reduced ? 0 : motionTokens.normal,
+              ease: motionTokens.ease,
+            }}
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest("a,button")) setOpen(false);
+            }}
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }

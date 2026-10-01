@@ -41,9 +41,11 @@ for (const width of [1440, 1024, 768, 375, 320]) {
     "auth/forgot-password",
     "privacy",
     "does-not-exist",
+    "status/invalid",
+    "display",
   ]) {
     await page.goto(base + route, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector("main h1");
+    try{await page.waitForSelector("main h1",{timeout:10000});}catch(e){console.error({width,route,errors,body:await page.locator("body").innerText()});throw e;}
     await page.waitForTimeout(200);
     assert.ok(
       await page.locator("main h1").innerText(),

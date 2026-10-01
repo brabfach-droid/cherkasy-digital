@@ -102,3 +102,22 @@ test("Required fields, consent, bounds and attachments are validated", () => {
     {},
   );
 });
+
+test("V2 conditional required and future date validation", () => {
+  const f = {
+    key: "birth",
+    type: "date",
+    label: "Дата",
+    required: true,
+    validation: { noFuture: true, showWhen: { field: "need", equals: true } },
+    options: [],
+    sort_order: 0,
+  };
+  assert.deepEqual(validateAnswers([f], { need: false }), {});
+  assert.ok(validateAnswers([f], { need: true }).birth);
+  assert.ok(validateAnswers([f], { need: true, birth: "2999-01-01" }).birth);
+  assert.deepEqual(
+    validateAnswers([f], { need: true, birth: "2000-01-01" }),
+    {},
+  );
+});

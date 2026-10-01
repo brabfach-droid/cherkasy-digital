@@ -1,3 +1,4 @@
+import { ApplicationQR } from "../components/V2";
 import { useEffect, useRef, useState } from "react";
 import {
   Link,
@@ -461,6 +462,7 @@ export function ApplicationDetail() {
               Продовжити заповнення
             </Link>
           )}
+          {!staff && app!.status !== "draft" && <ApplicationQR id={app!.id} />}
           <div className="detail-grid">
             <div>
               <div className="panel">

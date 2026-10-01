@@ -1,6 +1,6 @@
 {
   "name": "cherkasy-digital",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,13 +11,16 @@
     "test:db": "node tests/database.mjs",
     "sitemap": "node scripts/sitemap.mjs",
     "test:ui": "node tests/browser.mjs",
-    "test:ui:authenticated": "node tests/browser-authenticated.mjs"
+    "test:ui:authenticated": "node tests/browser-authenticated.mjs",
+    "test:ui:v2": "node tests/browser-v2.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
     "dompurify": "^3.2.7",
     "lucide-react": "^0.468.0",
     "marked": "^16.3.0",
+    "motion": "^13.4.6",
+    "qrcode": "^1.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.1"
@@ -26,6 +29,7 @@
     "@electric-sql/pglite": "^0.3.10",
     "@playwright/test": "^1.55.1",
     "@sparticuz/chromium": "^153.0.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",

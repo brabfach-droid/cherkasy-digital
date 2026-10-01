@@ -1,3 +1,4 @@
+import { ActivityTimeline, VerificationStatus } from "../components/V2";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../hooks/Auth";
@@ -21,6 +22,11 @@ import {
 import { datetime } from "../config/types";
 import type { Row } from "../config/types";
 export default function Account() {
+  const { section } = useParams();
+  if (section === "activity") return <ActivityTimeline />;
+  return <AccountContent />;
+}
+function AccountContent() {
   const { section } = useParams(),
     auth = useAuth(),
     toast = useToast(),
@@ -28,7 +34,8 @@ export default function Account() {
     [busy, setBusy] = useState(false),
     [modal, setModal] = useState<Row | null>(null),
     [password, setPassword] = useState(""),
-    [email, setEmail] = useState("");
+    [email, setEmail] = useState(""),
+    [notificationType, setNotificationType] = useState("");
   const name = section || "overview";
   const q = useData<{
     rows: Row[];
@@ -87,10 +94,13 @@ export default function Account() {
         eq: {
           user_id: auth.session!.user.id,
           ...(name === "drafts" ? { status: "draft" } : {}),
+          ...(name === "notifications" && notificationType
+            ? { type: notificationType }
+            : {}),
         },
       },
     );
-  }, [name, page, auth.profile?.updated_at]);
+  }, [name, page, notificationType, auth.profile?.updated_at]);
   const headings: Record<string, string> = {
     overview: "Ваш кабінет",
     applications: "Мої заяви",
@@ -140,12 +150,40 @@ export default function Account() {
         {name === "notifications" && (
           <Button
             className="secondary"
-            onClick={() => void run(() => rpc("mark_notifications"))}
+            onClick={() => void run(() => rpc("set_notification_read"))}
           >
             Прочитати всі
           </Button>
         )}
       </div>
+      {name === "notifications" && (
+        <div className="filters">
+          <select
+            aria-label="Тип сповіщень"
+            value={notificationType}
+            onChange={(e) => {
+              setNotificationType(e.target.value);
+              setPage(1);
+            }}
+          >
+            {[
+              ["", "Усі"],
+              ["application", "Заявки"],
+              ["appeal", "Звернення"],
+              ["service", "Послуги"],
+              ["system", "Системні"],
+              ["city", "Міські"],
+              ["important", "Важливі"],
+              ["emergency", "Термінові"],
+            ].map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {name === "profile" && <VerificationStatus />}
       <State loading={q.loading} error={q.error}>
         {name === "overview" ? (
           <>
@@ -367,16 +405,19 @@ export default function Account() {
                 {n.link?.startsWith("/") && !n.link.startsWith("//") && (
                   <Link to={n.link}>Відкрити</Link>
                 )}
-                {!n.read_at && (
-                  <Button
-                    className="secondary small"
-                    onClick={() =>
-                      void run(() => rpc("mark_notifications", { p_id: n.id }))
-                    }
-                  >
-                    Прочитано
-                  </Button>
-                )}
+                <Button
+                  className="secondary small"
+                  onClick={() =>
+                    void run(() =>
+                      rpc("set_notification_read", {
+                        p_id: n.id,
+                        p_read: !n.read_at,
+                      }),
+                    )
+                  }
+                >
+                  {n.read_at ? "Позначити непрочитаним" : "Прочитано"}
+                </Button>
               </div>
             ))}
             {!q.data?.count && <Empty text="Сповіщень ще немає" />}

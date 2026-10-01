@@ -1,3 +1,11 @@
+import {
+  APP_VERSION,
+  CityStatus,
+  GlobalAnnouncement,
+  InstallPrompt,
+  NotificationBell,
+  PageOutlet,
+} from "../components/V2";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, Navigate } from "react-router-dom";
 import { Bell, Menu, Search, X, User, ArrowUpRight } from "lucide-react";
@@ -6,7 +14,7 @@ import { useSettings } from "../hooks/Settings";
 import { useData } from "../hooks/useData";
 import { list } from "../services/data";
 import { configured, requireClient } from "../services/client";
-import { State } from "../components/UI";
+import { State, Modal, Popover } from "../components/UI";
 const navigation = [
   ["/", "Головна"],
   ["/services", "Послуги"],
@@ -25,7 +33,7 @@ export function PublicLayout() {
   const notifications = useData(
     () =>
       auth.session
-        ? list("notifications", { eq: { read_at: null }, size: 1 })
+        ? list("notifications", { eq: { read_at: null }, size: 5 })
         : Promise.resolve({ rows: [], count: 0 }),
     [auth.session?.user.id, loc.pathname],
   );
@@ -49,11 +57,15 @@ export function PublicLayout() {
       <a className="skip-link" href="#main">
         До вмісту
       </a>
+      <GlobalAnnouncement />
       <header className="site-header">
-        <Link to="/" className="brand">
-          <img src={logo} alt="Логотип порталу" />
-          <span>{settings.name}</span>
-        </Link>
+        <div className="brand-status">
+          <Link to="/" className="brand">
+            <img src={logo} alt="Логотип порталу" />
+            <span>{settings.name}</span>
+          </Link>
+          <CityStatus />
+        </div>
         <nav
           className={open ? "main-nav open" : "main-nav"}
           aria-label="Головне меню"
@@ -68,40 +80,52 @@ export function PublicLayout() {
           <Link to="/search" className="icon-button" aria-label="Пошук">
             <Search size={20} />
           </Link>
-          <Link
-            to="/account/notifications"
-            className="icon-button"
-            aria-label={`Сповіщення: ${notifications.data?.count || 0} непрочитаних`}
+          <Popover
+            className="notification-menu"
+            label={`Сповіщення: ${notifications.data?.count || 0} непрочитаних`}
+            trigger={
+              <NotificationBell count={notifications.data?.count || 0} />
+            }
           >
-            <Bell size={20} />
-            {!!notifications.data?.count && (
-              <span className="notification-dot">
-                {notifications.data.count}
-              </span>
+            <strong>Сповіщення</strong>
+            {notifications.data?.rows.map((n) => (
+              <Link
+                key={n.id}
+                to={
+                  n.link?.startsWith("/") && !n.link.startsWith("//")
+                    ? n.link
+                    : "/account/notifications"
+                }
+              >
+                {n.title}
+              </Link>
+            ))}
+            {!notifications.data?.count && (
+              <p>Немає непрочитаних повідомлень</p>
             )}
-          </Link>
+            <Link to="/account/notifications">Усі сповіщення →</Link>
+          </Popover>
           {auth.session ? (
-            <details className="user-menu">
-              <summary>
-                <User size={18} />
-                <span>{auth.profile?.first_name || "Кабінет"}</span>
-              </summary>
-              <div>
-                <Link to="/account">Мій кабінет</Link>
-                {auth.roles.length > 0 && (
-                  <Link to="/staff">Панель працівника</Link>
-                )}
-                {auth.roles.some((r) =>
-                  [
-                    "super_admin",
-                    "admin",
-                    "department_admin",
-                    "editor",
-                  ].includes(r),
-                ) && <Link to="/admin">Адмінпанель</Link>}
-                <button onClick={() => void auth.logout()}>Вийти</button>
-              </div>
-            </details>
+            <Popover
+              label="Меню профілю"
+              trigger={
+                <>
+                  <User size={18} />
+                  <span>{auth.profile?.first_name || "Кабінет"}</span>
+                </>
+              }
+            >
+              <Link to="/account">Мій кабінет</Link>
+              {auth.roles.length > 0 && (
+                <Link to="/staff">Панель працівника</Link>
+              )}
+              {auth.roles.some((r) =>
+                ["super_admin", "admin", "department_admin", "editor"].includes(
+                  r,
+                ),
+              ) && <Link to="/admin">Адмінпанель</Link>}
+              <button onClick={() => void auth.logout()}>Вийти</button>
+            </Popover>
           ) : (
             <Link className="button small" to="/auth/login">
               Увійти <ArrowUpRight size={16} />
@@ -129,6 +153,7 @@ export function PublicLayout() {
       <main id="main">
         <Outlet />
       </main>
+      <InstallPrompt />
       <footer>
         <div className="footer-grid">
           <div>
@@ -180,6 +205,9 @@ export function PublicLayout() {
             © {new Date().getFullYear()} {settings.name}
           </span>
           <span>{settings.footer_text}</span>
+          <small className="app-version" title="Версія порталу">
+            v{APP_VERSION}
+          </small>
         </div>
       </footer>
     </>
@@ -225,6 +253,7 @@ export const accountLinks = [
   ["documents", "Документи"],
   ["saved", "Збережені послуги"],
   ["notifications", "Сповіщення"],
+  ["activity", "Центр активності"],
   ["addresses", "Мої адреси"],
   ["profile", "Профіль"],
   ["security", "Безпека"],
@@ -236,8 +265,35 @@ export function Workspace({
   kind: string;
   links: string[][];
 }) {
+  const [drawer, setDrawer] = useState(false);
+  const workspaceNav = (
+    <nav aria-label="Меню кабінету">
+      {links.map(([to, label]) => (
+        <NavLink
+          key={to}
+          to={"/" + kind + (to ? "/" + to : "")}
+          end={to === ""}
+          onClick={() => setDrawer(false)}
+        >
+          {label}
+        </NavLink>
+      ))}
+    </nav>
+  );
   return (
     <div className="workspace">
+      <button
+        className="workspace-toggle button secondary"
+        onClick={() => setDrawer(true)}
+      >
+        <Menu size={18} />
+        Меню кабінету
+      </button>
+      {drawer && (
+        <Modal title="Меню кабінету" onClose={() => setDrawer(false)}>
+          <div className="workspace-drawer">{workspaceNav}</div>
+        </Modal>
+      )}
       <aside>
         <p className="eyebrow">
           {kind === "account"

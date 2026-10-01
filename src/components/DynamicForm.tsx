@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { validateAnswers, fieldVisible } from "../utils/validation";
 import type { FormField } from "../config/types";
 export function DynamicFields({
   fields,
@@ -10,10 +12,19 @@ export function DynamicFields({
   onChange: (k: string, v: any) => void;
   errors?: Record<string, string>;
 }) {
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const live = validateAnswers(fields, data);
+  const shownErrors = {
+    ...Object.fromEntries(Object.entries(live).filter(([k]) => touched[k])),
+    ...errors,
+  };
   return (
     <>
       {fields
-        .filter((f) => !["file", "image", "pdf"].includes(f.type))
+        .filter(
+          (f) =>
+            fieldVisible(f, data) && !["file", "image", "pdf"].includes(f.type),
+        )
         .map((f) => {
           const id = "field-" + f.key,
             v = data[f.key] ?? "";
@@ -29,8 +40,9 @@ export function DynamicFields({
             value: v,
             required: f.required,
             placeholder: f.placeholder,
-            "aria-invalid": !!errors[f.key],
+            "aria-invalid": !!shownErrors[f.key],
             "aria-describedby": id + "-help",
+            onBlur: () => setTouched((t) => ({ ...t, [f.key]: true })),
             onChange: (e: any) => onChange(f.key, e.target.value),
           };
           let control;
@@ -100,7 +112,11 @@ export function DynamicFields({
                 {...props}
                 type={f.type === "phone" ? "tel" : f.type}
                 min={f.validation.min}
-                max={f.validation.max}
+                max={
+                  f.type === "date" && f.validation.noFuture
+                    ? new Date().toISOString().slice(0, 10)
+                    : f.validation.max
+                }
                 minLength={f.validation.minLength}
                 maxLength={f.validation.maxLength}
                 pattern={f.validation.pattern}
@@ -121,9 +137,9 @@ export function DynamicFields({
               {!["checkbox", "confirmation"].includes(f.type) ? control : null}
               <small
                 id={id + "-help"}
-                className={errors[f.key] ? "field-error" : ""}
+                className={shownErrors[f.key] ? "field-error" : ""}
               >
-                {errors[f.key] || f.help_text}
+                {shownErrors[f.key] || f.help_text}
               </small>
             </div>
           );

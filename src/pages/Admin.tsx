@@ -1,3 +1,4 @@
+import { RevisionHistory } from "./V2Pages";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../hooks/Auth";
@@ -278,21 +279,30 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
     [sort, setSort] = useState("created_at"),
     [editing, setEditing] = useState<Row | null>(null),
     [busy, setBusy] = useState(false),
-    [preview, setPreview] = useState(false);
+    [preview, setPreview] = useState(false),
+    [revision, setRevision] = useState<Row | null>(null);
   const d = useDebounce(search);
   const q = useData(
     () =>
       list(config?.table || "services", {
         page,
         search: d,
-        searchColumns: config?.fields.some((f) => f.key === "title")
-          ? ["title"]
-          : config?.table === "faqs"
-            ? ["question", "answer"]
-            : config?.table === "account_deletion_requests"
-              ? ["status"]
-              : ["name"],
-        eq: status ? { status } : undefined,
+        searchColumns:
+          config?.table === "account_verifications"
+            ? ["kind"]
+            : config?.fields.some((f) => f.key === "title")
+              ? ["title"]
+              : config?.table === "faqs"
+                ? ["question", "answer"]
+                : config?.table === "account_deletion_requests"
+                  ? ["status"]
+                  : ["name"],
+        eq: {
+          ...(status ? { status } : {}),
+          ...(resource === "important-announcements"
+            ? { placement: "global" }
+            : {}),
+        },
         order: sort,
       }),
     [resource, d, page, status, sort],
@@ -336,6 +346,12 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                             : f.type === "datetime-local"
                               ? new Date().toISOString()
                               : "";
+              }
+              if (resource === "important-announcements") {
+                row.end_at = null;
+                row.placement = "global";
+                row.version = 1;
+                row.dismissible = true;
               }
               setEditing(row);
             }}
@@ -418,6 +434,21 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                     >
                       Редагувати
                     </Button>
+                    {[
+                      "services",
+                      "news",
+                      "documents",
+                      "events",
+                      "faqs",
+                      "announcements",
+                    ].includes(config.table) && (
+                      <Button
+                        className="secondary small"
+                        onClick={() => setRevision(r)}
+                      >
+                        Історія змін
+                      </Button>
+                    )}
                     {config.content && (
                       <Button
                         className="secondary small"
@@ -493,6 +524,15 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
         {!q.data?.count && <Empty />}
         <Pagination page={page} count={q.data?.count || 0} onChange={setPage} />
       </State>
+      {revision && (
+        <Modal title="Історія змін" onClose={() => setRevision(null)}>
+          <RevisionHistory
+            table={config.table}
+            id={revision.id}
+            onRestored={() => q.reload()}
+          />
+        </Modal>
+      )}
       {editing && (
         <Modal
           title={config.title + " — редактор"}
@@ -530,6 +570,10 @@ export function Crud({ resourceName }: { resourceName?: string } = {}) {
                         ? null
                         : v;
                   }
+                  if (resource === "important-announcements")
+                    clean.placement = "global";
+                  if (config.table === "account_verifications")
+                    clean.verified_by = auth.session!.user.id;
                   if (editing.filename) clean.filename = editing.filename;
                   await save(config.table, clean);
                   setEditing(null);
@@ -952,6 +996,59 @@ export function FormBuilder() {
                   />
                 </label>
               )}
+              {f.type === "date" && (
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={!!f.validation.noFuture}
+                    onChange={(e) =>
+                      change(i, "validation", {
+                        ...f.validation,
+                        noFuture: e.target.checked,
+                      })
+                    }
+                  />
+                  Дата не може бути в майбутньому
+                </label>
+              )}
+              <label>
+                Показувати після відповіді в іншому полі (ключ поля)
+                <input
+                  value={f.validation.showWhen?.field || ""}
+                  onChange={(e) => {
+                    const v = { ...f.validation };
+                    if (e.target.value)
+                      v.showWhen = {
+                        field: e.target.value,
+                        equals: v.showWhen?.equals || "",
+                      };
+                    else delete v.showWhen;
+                    change(i, "validation", v);
+                  }}
+                />
+              </label>
+              {f.validation.showWhen?.field && (
+                <label>
+                  Значення відповіді (для checkbox: true або false)
+                  <input
+                    value={String(f.validation.showWhen.equals)}
+                    onChange={(e) =>
+                      change(i, "validation", {
+                        ...f.validation,
+                        showWhen: {
+                          ...f.validation.showWhen,
+                          equals:
+                            e.target.value === "true"
+                              ? true
+                              : e.target.value === "false"
+                                ? false
+                                : e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </label>
+              )}
               <div className="grid two">
                 {["min", "max", "minLength", "maxLength", "pattern"].map(
                   (k) => (
@@ -1305,6 +1402,24 @@ export function Settings() {
             setValues((v) => ({ ...v, social_links }))
           }
         />
+        <h2>Режим великого екрана</h2>
+        <JsonField
+          label="Налаштування /display: title, blocks (city, announcements, events, news, services), interval (5–120 секунд), theme (dark/light), qr_url, fullscreen_friendly"
+          value={
+            values.display || {
+              title: "Черкаси Цифрові",
+              blocks: ["city", "announcements", "events", "news", "services"],
+              interval: 15,
+              theme: "dark",
+              qr_url: "",
+              fullscreen_friendly: true,
+            }
+          }
+          onChange={(display) => setValues((v) => ({ ...v, display }))}
+        />
+        <Link to="/display" target="_blank">
+          Відкрити великий екран
+        </Link>
         <h2>Блоки головної сторінки</h2>
         {(values.homepage_blocks || []).map((b: any, i: number) => (
           <div key={b.key} className="row">

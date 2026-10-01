@@ -6,6 +6,7 @@ export function validateAnswers(
 ) {
   const errors: Record<string, string> = {};
   for (const f of fields) {
+    if (!fieldVisible(f, data)) continue;
     if (["heading", "information"].includes(f.type)) continue;
     const v = data[f.key];
     const empty =
@@ -30,6 +31,14 @@ export function validateAnswers(
       errors[f.key] = "Перевірте email";
     if (f.type === "phone" && !/^\+?[\d\s()-]{7,20}$/.test(v))
       errors[f.key] = "Перевірте номер телефону";
+    if (f.type === "address" && String(v).trim().length < 8)
+      errors[f.key] = "Вкажіть місто, вулицю та номер будинку";
+    if (
+      f.type === "date" &&
+      f.validation.noFuture &&
+      String(v) > new Date().toISOString().slice(0, 10)
+    )
+      errors[f.key] = "Дата не може бути в майбутньому";
     if (f.type === "number") {
       const n = Number(v);
       if (!Number.isFinite(n)) errors[f.key] = "Потрібне число";
@@ -55,4 +64,9 @@ export function validateAnswers(
       errors[f.key] = "Виберіть опцію";
   }
   return errors;
+}
+
+export function fieldVisible(f: FormField, data: Record<string, any>) {
+  const c = f.validation?.showWhen;
+  return !c || !c.field || data[c.field] === c.equals;
 }
