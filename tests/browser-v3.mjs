@@ -1,3 +1,4 @@
+import {auditTheme,auditComponents} from './theme-audit.mjs';
 import {preview} from 'vite';
 import {chromium} from 'playwright';
 import Chromium from '@sparticuz/chromium';
@@ -20,8 +21,13 @@ for(const width of [1920,1440,1024,768,430,390,320]){
  await page.getByRole('dialog').getByRole('option').filter({hasText:'консульта'}).first().waitFor();
  await page.keyboard.press('ArrowDown');const href=await page.locator('[role=option][aria-selected=true]').getAttribute('href');await page.keyboard.press('Enter');await page.waitForURL(u=>u.pathname===href,{waitUntil:'domcontentloaded'});
  await page.goto(base);await page.locator('.category').first().waitFor();
+ await auditTheme(page,'home dark '+width);
+ if(width===1440)await auditComponents(page);
  if(width===1440||width===390)await page.screenshot({path:'test-results/v3-dark-'+width+'.png',fullPage:true});
  await page.emulateMedia({reducedMotion:'reduce'});assert.ok(await page.evaluate(()=>matchMedia('(prefers-reduced-motion: reduce)').matches));await page.emulateMedia({reducedMotion:'no-preference'});
+}
+for(const path of ['services','services/demo-consultation','news','news/demo-portal','documents','documents/demo-guide','events','events/demo-event','now','appeals','auth/login','auth/register','help']){
+ await page.goto(base+path);await page.locator('main h1').first().waitFor();await page.waitForTimeout(150);await auditTheme(page,path+' dark');
 }
 assert.deepEqual(errors,[]);console.log('PASS V3 public: seven widths, persisted dark theme, keyboard grouped search, one palette, reduced motion, no overflow/errors');
 await browser.close();await new Promise(r=>server.httpServer.close(r));

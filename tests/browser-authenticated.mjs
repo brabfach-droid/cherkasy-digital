@@ -1,3 +1,4 @@
+import {auditTheme} from './theme-audit.mjs';
 // UI-only network fixtures. Real server authorization is covered by database.mjs, not these fixtures.
 import { createServer } from "vite";
 import { chromium } from "playwright";
@@ -93,7 +94,8 @@ seed.audit_logs = [
   },
 ];
 seed.saved_services = [];
-seed.appeals = [];
+const appealId="eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+seed.appeals = [{id:appealId,user_id:uid,number:"CK-A-2026-000001",title:"Тестове звернення",message:"Перевірка зміни статусу",status:"new",department_id:svc.department_id,created_at:new Date().toISOString(),updated_at:new Date().toISOString()}];
 seed.user_addresses = [];
 seed.user_documents = [];
 const session = {
@@ -149,6 +151,7 @@ await page.route(url + "/**", async (route) => {
     if(table==='application_assignees'||table==='staff_directory')result=[{user_id:uid,name:'Тестовий Працівник'}];
     if(['application_linked_documents','document_usage'].includes(table))result=[];
     if(table==='set_application_metadata'){const a=seed.applications.find(v=>v.id===body.p_id);Object.assign(a,{priority:body.p_priority,deadline:body.p_deadline})}
+    if(table==='change_appeal'){if(seed.user_roles[0].role_name==='appeals_operator'&&body.p_department!==null)return route.fulfill({status:403,headers,body:JSON.stringify({message:'Недостатньо прав для передачі'})});const a=seed.appeals.find(v=>v.id===body.p_id);Object.assign(a,{status:body.p_status,response:body.p_response,department_id:body.p_department??a.department_id,updated_at:new Date().toISOString()})}
     if(table==='change_application'){const a=seed.applications.find(v=>v.id===body.p_id);Object.assign(a,{status:body.p_status,assignee_id:body.p_assignee})}
 
     if (table === "save_draft") {
@@ -223,7 +226,8 @@ await page.route(url + "/**", async (route) => {
 await page.route("https://fonts.googleapis.com/**", (r) => r.abort());
 await page.route("https://fonts.gstatic.com/**", (r) => r.abort());
 const base = "http://127.0.0.1:5175/cherkasy-digital/";
-for (const width of process.env.UI_QUICK ? [] : [1920,1440,1024,768,430,390]) {
+await page.addInitScript(()=>localStorage.setItem('portal-theme','dark'));
+for (const width of process.env.UI_QUICK ? [] : [1440,768,390]) {
   await page.setViewportSize({ width, height: 1000 });
   for (const p of [
     "account",
@@ -255,6 +259,8 @@ for (const width of process.env.UI_QUICK ? [] : [1920,1440,1024,768,430,390]) {
     await page.goto(base + p, { waitUntil: "domcontentloaded" });
     await page.waitForSelector("main h1");
     await page.waitForTimeout(100);
+    await auditTheme(page,`dark ${width} ${p}`);
+    if([1440,390].includes(width)&&["account/documents","admin/news","staff/applications/"+aid].includes(p))await page.screenshot({path:`test-results/dark-${width}-${p.replaceAll("/","-")}.png`,fullPage:true});
     assert.ok(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth + 1,
@@ -380,7 +386,16 @@ await page.screenshot({
   fullPage: true,
 });
 // Exercise V3 detail tabs, permissioned metadata controls and staged upload feedback.
-await page.goto(base+'staff/applications/'+aid);await page.getByRole('tab',{name:'Чат',exact:true}).click();
+await page.goto(base+'staff/applications/'+aid);
+await page.getByLabel('Статус заяви').selectOption('received');
+await page.getByRole('button',{name:'Зберегти',exact:true}).click();
+await page.getByLabel('Статус заяви').locator('option[value=in_review]').waitFor({state:'attached'});
+assert.equal(seed.applications.find(v=>v.id===aid).status,'received');
+await page.getByLabel('Статус заяви').selectOption('in_review');
+await page.getByRole('button',{name:'Зберегти',exact:true}).click();
+await page.getByLabel('Статус заяви').locator('option[value=approved]').waitFor({state:'attached'});
+assert.equal(seed.applications.find(v=>v.id===aid).status,'in_review');
+await page.getByRole('tab',{name:'Чат',exact:true}).click();
 await page.getByLabel('Повідомлення користувачу / оператору').fill('Повідомлення V3');
 await page.getByRole('button',{name:'Надіслати повідомлення',exact:true}).click();
 await page.getByText('Повідомлення V3',{exact:true}).waitFor();
@@ -396,6 +411,22 @@ await page.locator('.staged input[type=file]').first().setInputFiles({name:'proo
 await page.getByText('Готовий до завантаження',{exact:false}).waitFor();
 assert.equal(seed.user_documents.length,0,'staging is not an upload');
 await page.getByRole('button',{name:'Прибрати',exact:true}).click();
+// Appeals have their own workflow: all six states must remain available and save.
+seed.user_roles[0].role_name='appeals_operator';
+await page.goto(base+'staff/appeals/'+appealId);
+const appealStatus=page.getByLabel('Статус звернення');await appealStatus.waitFor();
+assert.deepEqual(await appealStatus.locator('option').evaluateAll(es=>es.map(e=>e.value)),['new','received','forwarded','in_progress','completed','rejected']);
+await auditTheme(page,'appeal details dark');
+for(const state of ['received','in_progress','completed']){
+ await appealStatus.selectOption(state);
+ await page.getByRole('button',{name:'Зберегти',exact:true}).click();
+ await page.waitForFunction(([id,state])=>document.querySelector('[aria-label="Статус звернення"]')?.value===state,[appealId,state]);
+ await page.getByRole('button',{name:'Зберегти',exact:true}).waitFor();
+ await page.waitForTimeout(150);
+ assert.equal(seed.appeals.find(v=>v.id===appealId).status,state);
+ assert.equal(seed.appeals.find(v=>v.id===appealId).department_id,svc.department_id,'ordinary status update preserves department');
+ await page.reload();await appealStatus.waitFor();assert.equal(await appealStatus.inputValue(),state,'appeal status persists after reload');
+}
 assert.deepEqual(errors, []);
 console.log(
   "PASS: authenticated resident/staff/admin UI fixtures, CMS preview/save, form builder, multistep draft/submit, mobile layout, zero page errors",

@@ -622,4 +622,17 @@ await as('resident',async()=>{
 });
 console.log('PASS V3: private document reuse, required file validation, immutable used files, metadata privileges, transfer isolation, internal notes, attachment checks, appeal token privacy/revocation, server notification deduplication');
 
+// Regression: changing an appeal status must not request a department transfer.
+const appealDepartment=(await db.query('select department_id from appeals where id=$1',[v3appeal])).rows[0].department_id;
+await db.query("insert into user_roles(user_id,role_name) values($1,'appeals_operator')",[users.operator]);
+await db.query('insert into staff_departments(user_id,department_id) values($1,$2) on conflict do nothing',[users.operator,appealDepartment]);
+await as('operator',async()=>{
+ await assert.rejects(db.query("select change_appeal($1,'received','',null,$2)",[v3appeal,appealDepartment]),/Недостатньо прав для передачі/);
+ for(const state of ['received','in_progress','completed']){
+  await db.query('select change_appeal($1,$2,$3,null,null)',[v3appeal,state,'Опрацьовано']);
+  const row=(await db.query('select status,department_id from appeals where id=$1',[v3appeal])).rows[0];
+  assert.equal(row.status,state);assert.equal(row.department_id,appealDepartment);
+ }
+});
+console.log('PASS appeal operator: status changes persist with null department; unauthorized transfer remains blocked');
 await db.close();

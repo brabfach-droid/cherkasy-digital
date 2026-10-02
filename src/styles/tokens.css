@@ -1,3 +1,30 @@
 /* V3 shared design tokens. Breakpoints: 640 / 900 / 1200px. */
 :root{--primary:#087f72;--accent:#13b8a6;--ink:#121716;--muted:#60716d;--bg:#f4f6f5;--surface:#fff;--elevated:#fff;--line:#dce6e2;--soft:#dff4ef;--danger:#a3213b;--warning:#945d05;--info:#20678b;--success:#087f72;--radius-sm:10px;--radius:20px;--radius-lg:32px;--shadow:0 12px 36px #16382e0b;--shadow-popover:0 22px 70px #112e2529;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;--motion-fast:160ms;--motion-normal:240ms;--motion-slow:360ms;--ease-standard:cubic-bezier(.2,0,0,1);--focus:0 0 0 4px #13b8a630;--z-header:30;--z-popover:50;--z-modal:100;--z-toast:150;color-scheme:light}
 :root[data-theme=dark]{--ink:#edf5f1;--muted:#a6bab2;--bg:#0d1714;--surface:#172620;--elevated:#1f332a;--line:#344b40;--soft:#213e34;--primary:#35c7ae!important;--danger:#ff9bab;--warning:#f2cc7b;--info:#9fd9f6;--success:#65dfc1;--shadow:0 12px 36px #0003;--shadow-popover:0 22px 70px #0008;color-scheme:dark}
+
+/* Semantic component colors: every foreground travels with its surface. */
+:root {
+ --light:var(--soft);--white:var(--surface);
+ --surface-subtle:#f8fbf9;--surface-hover:#e5ebe8;--surface-sunken:#eef2ef;
+ --on-primary:#fff;--primary-hover:#096b60;
+ --info-soft:#e6eef9;--info-ink:#375e95;--info-line:#c8dff0;
+ --success-soft:#daf0e3;--success-ink:#185846;--success-line:#9ec3b3;
+ --warning-soft:#fff2d7;--warning-ink:#705012;--warning-line:#e9d6ad;
+ --danger-soft:#fde9e7;--danger-ink:#9f302a;--danger-line:#e2a6b0;
+ --critical-bg:#8d251e;--on-critical:#fff;
+ --skeleton-base:#e8eeea;--skeleton-highlight:#f9fbfa;
+ --pdf-shell:#ddd;--code-bg:#f1f5f2;
+ --decorative-line:#91c4ad;--decorative-strong:#9fd1b8;
+}
+:root[data-theme=dark] {
+ --surface-subtle:#1b2c24;--surface-hover:#2a4035;--surface-sunken:#111e18;
+ --on-primary:#08251d;--primary-hover:#61dbc2;
+ --info-soft:#173346;--info-ink:#b4ddfa;--info-line:#42647b;
+ --success-soft:#183d30;--success-ink:#8be5bf;--success-line:#396a55;
+ --warning-soft:#3d311a;--warning-ink:#f5d48c;--warning-line:#76603c;
+ --danger-soft:#42232d;--danger-ink:#ffabb9;--danger-line:#825064;
+ --critical-bg:#692538;--on-critical:#fff0f3;
+ --skeleton-base:#1b2d24;--skeleton-highlight:#304638;
+ --pdf-shell:#111e18;--code-bg:#111e18;
+ --decorative-line:#456b59;--decorative-strong:#355748;
+}
